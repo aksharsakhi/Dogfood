@@ -1,0 +1,20 @@
+# Acceptance-only fixture credentials; keep this file private.
+[portal]
+base_url = "http://localhost:4000"
+
+[tiers]
+claimed = ["T1", "T2"]
+pitch = "Hackathon events, team submissions, public gallery, and isolated judging."
+
+[auth]
+organizer = "Cookie: dogfood_session=F4cGHeFb_bF6wI7d9OtESUklftWQol24Lqx5zouMaKs"
+judge_a = "Cookie: dogfood_session=XANDQPDzh7HwQ9wNSezPggafDi5ZPf7MKltGAqJE2Ig"
+judge_b = "Cookie: dogfood_session=xN65tCho-mvfrJSTRte5Xl8YcIdEIdPRad4Y20QbU4o"
+participant = "Cookie: dogfood_session=tjKvlbtE9x-9wJkp_t-LVqt2p0GfHpc_60fdN7EJhf8"
+
+[routes]
+gallery = "/events/8727a75d-bbe8-584a-9c95-d5c1a916e38c/gallery?pageSize=50"
+submit = "/events/8727a75d-bbe8-584a-9c95-d5c1a916e38c/projects/7bece727-8867-5a98-871d-abf22410a43a/submissions/70c1a52c-ec67-5c04-9f4a-324ff02becbe/submit"
+judge_scores = "/events/8727a75d-bbe8-584a-9c95-d5c1a916e38c/judging/judges/130e9f1c-64f2-5d81-8b58-ea3c1d6dcbb2/scores"
+peer_scores = "/events/8727a75d-bbe8-584a-9c95-d5c1a916e38c/judging/judges/130e9f1c-64f2-5d81-8b58-ea3c1d6dcbb2/scores"
+csv_export = "/events/8727a75d-bbe8-584a-9c95-d5c1a916e38c/judging/exports/raw-evaluations"

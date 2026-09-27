@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+  },
+  "include": [
+    "prisma/seed.ts",
+    "tests/**/*.ts",
+    "playwright.config.ts",
+    "prisma.config.ts",
+    "apps/api/test/**/*.ts"
+  ]
+}

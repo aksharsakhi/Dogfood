@@ -1,0 +1,148 @@
+:root {
+  color-scheme: light;
+  font-family: system-ui, sans-serif;
+  color: #182b24;
+  background: #f7f8f3;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+header,
+main,
+footer {
+  max-width: 1050px;
+  margin: auto;
+  padding: 28px;
+}
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #dce2d8;
+  gap: 20px;
+}
+header a {
+  font-size: 24px;
+  font-weight: 800;
+  text-decoration: none;
+  color: inherit;
+}
+header span,
+footer {
+  color: #526258;
+  font-size: 14px;
+}
+main {
+  padding-block: 36px 64px;
+  min-height: 65vh;
+}
+h1 {
+  font-size: clamp(36px, 6vw, 64px);
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+  margin-block: 18px 28px;
+}
+p {
+  max-width: 620px;
+  line-height: 1.7;
+}
+.eyebrow {
+  color: #446748;
+  font-weight: 600;
+}
+section {
+  margin-top: 48px;
+  padding: 24px;
+  max-width: 850px;
+  background: #fff;
+  border: 1px solid #dce2d8;
+  border-radius: 12px;
+}
+h2 {
+  margin: 0;
+  font-size: 20px;
+}
+.dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #a76821;
+  margin-right: 8px;
+}
+.online {
+  background: #267445;
+}
+
+nav {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+nav a {
+  color: #246341;
+}
+form {
+  display: grid;
+  gap: 14px;
+  max-width: 620px;
+  margin-block: 24px;
+}
+fieldset {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 18px;
+  border: 1px solid #dce2d8;
+  border-radius: 8px;
+  background: #fff;
+}
+legend {
+  padding-inline: 6px;
+  font-weight: 700;
+}
+textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+label {
+  display: grid;
+  gap: 5px;
+  font-weight: 600;
+}
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #a9b5a9;
+  border-radius: 5px;
+  font: inherit;
+}
+button {
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 5px;
+  background: #225f40;
+  color: white;
+  font: inherit;
+  cursor: pointer;
+  width: fit-content;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+[role='alert'] {
+  color: #a32525;
+}
+code {
+  overflow-wrap: anywhere;
+}
+section {
+  margin-block: 24px;
+}

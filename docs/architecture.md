@@ -1,0 +1,37 @@
+# Foundation decisions
+
+Dogfood is one NestJS modular monolith, a Next.js App Router frontend, and one PostgreSQL database. npm workspaces share wire contracts and authorization types. Identity, event, participation, project, submission, and gallery APIs live in `apps/api/src/modules`.
+
+## Identity and authorization
+
+A User has no event role. EventMembership is unique by `(eventId, userId, role)`, intentionally permitting multiple roles within an event. PlatformRole currently supports ADMIN. Session stores unique token hashes, expiry, revocation, optional hashed IP, and user agent. Phase 2 provides normalized-email registration/login, random scrypt salts, hashed session tokens and HttpOnly SameSite=Lax cookies. Active status, expiry and revocation are checked on authenticated requests. Browser mutation requests are limited to the configured web origin.
+
+Contextual policies combine active event membership and team ownership. ADMIN bypasses event organizer checks as an explicit platform policy. Never trust a request-supplied role. Submission snapshots and judging evaluation workspaces enforce strict role and assignment isolation.
+
+## Relational boundaries
+
+All 27 entities are in `prisma/schema.prisma`. UUIDs identify entities; natural join keys identify PlatformRole and JudgeExpertise. Decimal fields store scores, weights and money. Dates use PostgreSQL timestamptz; the event timezone is an IANA name that future event DTOs must validate. JSONB is limited to flexible registration metadata, score-run parameters and audit snapshots.
+
+EventMembership supports multiple event roles. TeamMember carries eventId solely to enforce the partial unique index on `(eventId,userId) WHERE leftAt IS NULL`. Its composite FK guarantees that eventId matches Team. A departed member retains their row; rejoining the same team updates that membership. Full membership interval history belongs in audit events later.
+
+Default deletion is RESTRICT to preserve history; only ephemeral sessions and global-role links cascade with a user. Deactivate users and archive events instead of deleting historical records. Audit actor/event references are retained with RESTRICT. There is no automatic destructive purge.
+
+## SQL beyond Prisma
+
+The second and third migrations contain required PostgreSQL checks, a case-insensitive email index, the active-team partial index, stable-parent-key triggers, cross-event validation triggers, and snapshot guards. These are authoritative and must remain in migrations; do not replace migration deployment with `prisma db push`. Stable parent identities/event links prevent later reparenting from invalidating dependent rows. Test changes with `npm run test:db` against a seeded development database.
+
+Database checks enforce positive versions/ranks, score bounds, expertise 1–5, valid team sizes and date windows, invitation recipients, paired prize money/currency, and required lifecycle timestamps. JudgeProfile requires JUDGE membership. Cross-event checks cover projects, prizes, expertise, conflicts, assignments, evaluations, score aggregates, and results.
+
+Project is editable context. Submission is a versioned snapshot. Phase 3 serializes version creation and submission with team and project row locks, and checks the configured submission window through the shared Clock. The current submitted version is the highest submitted/locked version; a later draft never replaces it. Public gallery rows use only the latest submitted snapshot from public or unlisted events. Assignments reference exact submitted/locked submission IDs. Evaluations require a published rubric. AuditEvent rows are append-only. Once a submission leaves DRAFT its content cannot change or be deleted. Submitted/locked evaluations and their raw criterion scores are protected; score writes lock the parent evaluation to serialize against finalization. Published rubric content and criteria are protected; criterion writes lock the parent rubric. NormalizedScore and ProjectScore belong to separate ScoreRuns; ProjectResult belongs to a ResultRun. No calculation pipeline exists yet.
+
+Phase 2 transactional services enforce event and registration windows, team lifecycle and capacity, owner rules, invitation recipient/expiry/replay checks, and atomic audit events. Submission and judging services must enforce conflicts, evaluation completeness, rubric totals, final-version selection and eligibility. Before scoring is exposed, make score runs/results append-only with captured input IDs, immutable algorithm versions and parameters. Database guards are not authorization.
+
+## API conventions
+
+Success responses are typed resource JSON (no redundant envelope). Errors are `{code,message,details,requestId}`. The global filter sanitizes unexpected errors; request IDs are generated server-side and returned as `x-request-id`. Global DTO validation rejects unknown properties. Browser CORS uses one configured origin with credentials enabled for future sessions. Logging intentionally omits request payloads and tokens.
+
+`GET /health` is liveness and needs no database. `GET /ready` queries PostgreSQL with a two-second response deadline; failed readiness returns 503. Prisma connections are lazy, so database failure does not prevent liveness. Set PostgreSQL connection/pool timeouts in DATABASE_URL for deployment-specific bounds; the response deadline does not cancel the underlying query. Swagger lives at `/docs`, JSON at `/docs-json`.
+
+## Dependencies and deployment
+
+Node 22+, Next.js 16, NestJS 11 and Prisma 6 are pinned by the npm lockfile. Prisma 6 deliberately keeps the mature schema/client migration workflow; upgrading majors is a separate change. Docker uses Debian images with OpenSSL, a non-root application user, persistent PostgreSQL 16 storage, migrations before API startup, and readiness-based service ordering. Images retain workspace tooling to allow migrations and explicit development seeding; pruning production images can follow once CI verifies all runtime assets. Development secrets in `.env.example` are public defaults only.

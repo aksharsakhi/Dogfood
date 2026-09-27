@@ -1,0 +1,770 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum GlobalRole {
+  ADMIN
+}
+
+enum EventRole {
+  PARTICIPANT
+  JUDGE
+  ORGANIZER
+}
+
+enum MembershipStatus {
+  ACTIVE
+  SUSPENDED
+  REVOKED
+}
+
+enum EventVisibility {
+  PUBLIC
+  UNLISTED
+  PRIVATE
+}
+
+enum GalleryVisibility {
+  HIDDEN
+  AFTER_SUBMISSIONS_CLOSE
+  PUBLIC
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+enum RegistrationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  WAITLISTED
+  WITHDRAWN
+}
+
+enum TeamStatus {
+  FORMING
+  ACTIVE
+  LOCKED
+  DISBANDED
+}
+
+enum TeamRole {
+  OWNER
+  MEMBER
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  REVOKED
+}
+
+enum ProjectStatus {
+  DRAFT
+  ACTIVE
+  WITHDRAWN
+  DISQUALIFIED
+}
+
+enum SubmissionStatus {
+  DRAFT
+  SUBMITTED
+  LOCKED
+  WITHDRAWN
+}
+
+enum ConflictType {
+  TEAM
+  PROJECT
+  ORGANIZATION
+  OTHER
+}
+
+enum RubricStatus {
+  DRAFT
+  PUBLISHED
+  RETIRED
+}
+
+enum AssignmentMethod {
+  MANUAL
+  RANDOM
+  BALANCED
+  ALGORITHMIC
+}
+
+enum AssignmentStatus {
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  REVOKED
+}
+
+enum AssignmentRunType {
+  BATCH
+  MANUAL
+}
+
+enum AssignmentRunStatus {
+  PREVIEW
+  PUBLISHED
+  SUPERSEDED
+}
+
+enum EvaluationStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  SUBMITTED
+  LOCKED
+}
+
+enum ResultStatus {
+  DRAFT
+  FINALIZED
+  PUBLISHED
+}
+
+enum ScoreRunStatus {
+  CREATING
+  COMPLETED
+  FAILED
+}
+
+model User {
+  id                     String            @id @default(uuid()) @db.Uuid
+  email                  String            @unique @db.VarChar(320)
+  passwordHash           String
+  displayName            String
+  emailVerifiedAt        DateTime?         @db.Timestamptz(6)
+  status                 UserStatus        @default(ACTIVE)
+  createdAt              DateTime          @default(now()) @db.Timestamptz(6)
+  updatedAt              DateTime          @updatedAt @db.Timestamptz(6)
+  sessions               Session[]         @relation("Session_userId")
+  platformRoles          PlatformRole[]    @relation("PlatformRole_userId")
+  createdEvents          Event[]           @relation("Event_createdById")
+  memberships            EventMembership[] @relation("EventMembership_userId")
+  registrations          Registration[]    @relation("Registration_userId")
+  createdTeams           Team[]            @relation("Team_createdById")
+  members                TeamMember[]      @relation("TeamMember_userId")
+  receivedInvitations    TeamInvitation[]  @relation("TeamInvitation_invitedUserId")
+  createdTeamInvitations TeamInvitation[]  @relation("TeamInvitation_createdById")
+  receivedJudgeInvites   JudgeInvitation[] @relation("JudgeInvitation_invitedUserId")
+  createdJudgeInvites    JudgeInvitation[] @relation("JudgeInvitation_createdById")
+  createdSubmissions     Submission[]      @relation("Submission_createdById")
+  assignedEvaluations    JudgeAssignment[] @relation("JudgeAssignment_assignedById")
+  createdAssignmentRuns  AssignmentRun[]   @relation("AssignmentRun_createdById")
+  createdScoreRuns       ScoreRun[]        @relation("ScoreRun_createdById")
+  createdResultRuns      ResultRun[]       @relation("ResultRun_createdById")
+  resultRunOverrides     ResultRun[]       @relation("ResultRun_overrideActorId")
+  auditEvents            AuditEvent[]      @relation("AuditEvent_actorUserId")
+}
+
+model Session {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime  @db.Timestamptz(6)
+  revokedAt DateTime? @db.Timestamptz(6)
+  ipHash    String?
+  userAgent String?
+  createdAt DateTime  @default(now()) @db.Timestamptz(6)
+  user      User      @relation("Session_userId", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model PlatformRole {
+  userId    String     @db.Uuid
+  role      GlobalRole
+  createdAt DateTime   @default(now()) @db.Timestamptz(6)
+  user      User       @relation("PlatformRole_userId", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@id([userId, role])
+}
+
+model Event {
+  id                   String            @id @default(uuid()) @db.Uuid
+  slug                 String            @unique
+  name                 String
+  shortDescription     String?
+  description          String?
+  rules                String?
+  eligibility          String?
+  timezone             String            @default("UTC")
+  registrationOpensAt  DateTime?         @db.Timestamptz(6)
+  registrationClosesAt DateTime?         @db.Timestamptz(6)
+  submissionOpensAt    DateTime?         @db.Timestamptz(6)
+  submissionClosesAt   DateTime?         @db.Timestamptz(6)
+  judgingOpensAt       DateTime?         @db.Timestamptz(6)
+  judgingClosesAt      DateTime?         @db.Timestamptz(6)
+  votingOpensAt        DateTime?         @db.Timestamptz(6)
+  votingClosesAt       DateTime?         @db.Timestamptz(6)
+  resultsPublishAt     DateTime?         @db.Timestamptz(6)
+  minTeamSize          Int               @default(1)
+  maxTeamSize          Int               @default(5)
+  visibility           EventVisibility   @default(PRIVATE)
+  galleryVisibility    GalleryVisibility @default(HIDDEN)
+  status               EventStatus       @default(DRAFT)
+  createdById          String            @db.Uuid
+  createdAt            DateTime          @default(now()) @db.Timestamptz(6)
+  updatedAt            DateTime          @updatedAt @db.Timestamptz(6)
+  createdBy            User              @relation("Event_createdById", fields: [createdById], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  memberships          EventMembership[] @relation("EventMembership_eventId")
+  tracks               Track[]           @relation("Track_eventId")
+  prizes               Prize[]           @relation("Prize_eventId")
+  registrations        Registration[]    @relation("Registration_eventId")
+  teams                Team[]            @relation("Team_eventId")
+  members              TeamMember[]      @relation("TeamMember_eventId")
+  projects             Project[]         @relation("Project_eventId")
+  rubrics              Rubric[]          @relation("Rubric_eventId")
+  judgeInvitations     JudgeInvitation[] @relation("JudgeInvitation_eventId")
+  assignmentRuns       AssignmentRun[]   @relation("AssignmentRun_eventId")
+  judgeAssignments     JudgeAssignment[] @relation("JudgeAssignment_eventId")
+  scoreRuns            ScoreRun[]        @relation("ScoreRun_eventId")
+  resultRuns           ResultRun[]       @relation("ResultRun_eventId")
+  auditEvents          AuditEvent[]      @relation("AuditEvent_eventId")
+
+  @@index([status])
+  @@index([createdById])
+}
+
+model EventMembership {
+  id           String           @id @default(uuid()) @db.Uuid
+  eventId      String           @db.Uuid
+  userId       String           @db.Uuid
+  role         EventRole
+  status       MembershipStatus @default(ACTIVE)
+  createdAt    DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime         @updatedAt @db.Timestamptz(6)
+  event        Event            @relation("EventMembership_eventId", fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  user         User             @relation("EventMembership_userId", fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  judgeProfile JudgeProfile?    @relation("JudgeProfile_eventMembershipId")
+
+  @@unique([eventId, userId, role])
+  @@index([userId])
+}
+
+model Track {
+  id             String           @id @default(uuid()) @db.Uuid
+  eventId        String           @db.Uuid
+  name           String
+  slug           String
+  description    String?
+  maxSubmissions Int?
+  createdAt      DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime         @updatedAt @db.Timestamptz(6)
+  event          Event            @relation("Track_eventId", fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  prizes         Prize[]          @relation("Prize_trackId")
+  projects       Project[]        @relation("Project_trackId")
+  expertise      JudgeExpertise[] @relation("JudgeExpertise_trackId")
+
+  @@unique([eventId, slug])
+}
+
+model Prize {
+  id          String   @id @default(uuid()) @db.Uuid
+  eventId     String   @db.Uuid
+  trackId     String?  @db.Uuid
+  name        String
+  description String?
+  position    Int?
+  amount      Decimal? @db.Decimal(19, 4)
+  currency    String?  @db.Char(3)
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(6)
+  event       Event    @relation("Prize_eventId", fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  track       Track?   @relation("Prize_trackId", fields: [trackId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([eventId])
+  @@index([trackId])
+}
+
+model Registration {
+  id           String             @id @default(uuid()) @db.Uuid
+  eventId      String             @db.Uuid
+  userId       String             @db.Uuid
+  status       RegistrationStatus @default(PENDING)
+  metadata     Json?              @db.JsonB
+  registeredAt DateTime           @default(now()) @db.Timestamptz(6)
+  withdrawnAt  DateTime?          @db.Timestamptz(6)
+  updatedAt    DateTime           @updatedAt @db.Timestamptz(6)
+  event        Event              @relation("Registration_eventId", fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  user         User               @relation("Registration_userId", fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([eventId, userId])
+  @@index([userId])
+}
+
+model Team {
+  id              String           @id @default(uuid()) @db.Uuid
+  eventId         String           @db.Uuid
+  name            String
+  slug            String
+  createdById     String           @db.Uuid
+  status          TeamStatus       @default(FORMING)
+  createdAt       DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime         @updatedAt @db.Timestamptz(6)
+  event           Event            @relation("Team_eventId", fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdBy       User             @relation("Team_createdById", fields: [createdById], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  members         TeamMember[]     @relation("TeamMember_teamId")
+  teamInvitations TeamInvitation[] @relation("TeamInvitation_teamId")
+  projects        Project[]        @relation("Project_teamId")
+  judgeConflicts  JudgeConflict[]  @relation("JudgeConflict_teamId")
+
+  @@unique([eventId, slug])
+  @@unique([id, eventId])
+  @@index([createdById])
+}
+
+model TeamMember {
+  id       String    @id @default(uuid()) @db.Uuid
+  eventId  String    @db.Uuid
+  teamId   String    @db.Uuid
+  userId   String    @db.Uuid
+  role     TeamRole  @default(MEMBER)
+  joinedAt DateTime  @default(now()) @db.Timestamptz(6)
+  leftAt   DateTime? @db.Timestamptz(6)
+  event    Event     @relation("TeamMember_eventId", fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  team     Team      @relation("TeamMember_teamId", fields: [teamId, eventId], references: [id, eventId], onDelete: Restrict, onUpdate: Restrict)
+  user     User      @relation("TeamMember_userId", fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([teamId, userId])
+  @@index([userId])
+}
+
+model TeamInvitation {
+  id            String           @id @default(uuid()) @db.Uuid
+  teamId        String           @db.Uuid
+  email         String?          @db.VarChar(320)
+  invitedUserId String?          @db.Uuid
+  tokenHash     String           @unique
+  status        InvitationStatus @default(PENDING)
+  expiresAt     DateTime         @db.Timestamptz(6)
+  createdById   String           @db.Uuid
+  respondedAt   DateTime?        @db.Timestamptz(6)
+  createdAt     DateTime         @default(now()) @db.Timestamptz(6)
+  team          Team             @relation("TeamInvitation_teamId", fields: [teamId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  invitedUser   User?            @relation("TeamInvitation_invitedUserId", fields: [invitedUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdBy     User             @relation("TeamInvitation_createdById", fields: [createdById], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([teamId])
+  @@index([invitedUserId])
+  @@index([createdById])
+  @@index([expiresAt])
+}
+
+model JudgeInvitation {
+  id            String           @id @default(uuid()) @db.Uuid
+  eventId       String           @db.Uuid
+  invitedUserId String?          @db.Uuid
+  email         String?          @db.VarChar(320)
+  tokenHash     String           @unique
+  status        InvitationStatus @default(PENDING)
+  expiresAt     DateTime         @db.Timestamptz(6)
+  createdById   String           @db.Uuid
+  respondedAt   DateTime?        @db.Timestamptz(6)
+  createdAt     DateTime         @default(now()) @db.Timestamptz(6)
+  event         Event            @relation("JudgeInvitation_eventId", fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  invitedUser   User?            @relation("JudgeInvitation_invitedUserId", fields: [invitedUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdBy     User             @relation("JudgeInvitation_createdById", fields: [createdById], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([eventId])
+  @@index([expiresAt])
+}
+
+model Project {
+  id             String          @id @default(uuid()) @db.Uuid
+  eventId        String          @db.Uuid
+  teamId         String          @db.Uuid
+  trackId        String?         @db.Uuid
+  name           String
+  slug           String
+  tagline        String?
+  description    String?
+  repositoryUrl  String?
+  demoUrl        String?
+  status         ProjectStatus   @default(DRAFT)
+  createdAt      DateTime        @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime        @updatedAt @db.Timestamptz(6)
+  event          Event           @relation("Project_eventId", fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  team           Team            @relation("Project_teamId", fields: [teamId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  track          Track?          @relation("Project_trackId", fields: [trackId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  submissions    Submission[]    @relation("Submission_projectId")
+  judgeConflicts JudgeConflict[] @relation("JudgeConflict_projectId")
+  projectScores  ProjectScore[]  @relation("ProjectScore_projectId")
+  projectResults ProjectResult[] @relation("ProjectResult_projectId")
+  normalizedScores NormalizedScore[] @relation("NormalizedScore_projectId")
+
+  @@unique([eventId, slug])
+  @@index([teamId])
+  @@index([trackId])
+}
+
+model Submission {
+  id               String            @id @default(uuid()) @db.Uuid
+  projectId        String            @db.Uuid
+  version          Int
+  title            String
+  description      String
+  repositoryUrl    String?
+  demoUrl          String?
+  projectName      String?
+  projectTagline   String?
+  trackId          String?           @db.Uuid
+  trackName        String?
+  status           SubmissionStatus  @default(DRAFT)
+  createdById      String            @db.Uuid
+  submittedAt      DateTime?         @db.Timestamptz(6)
+  lockedAt         DateTime?         @db.Timestamptz(6)
+  createdAt        DateTime          @default(now()) @db.Timestamptz(6)
+  project          Project           @relation("Submission_projectId", fields: [projectId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdBy        User              @relation("Submission_createdById", fields: [createdById], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  judgeAssignments JudgeAssignment[] @relation("JudgeAssignment_submissionId")
+  assignmentProposals AssignmentRunProposal[] @relation("AssignmentRunProposal_submissionId")
+  normalizedScores NormalizedScore[] @relation("NormalizedScore_submissionId")
+
+  @@unique([projectId, version])
+  @@index([createdById])
+}
+
+model JudgeProfile {
+  id                String            @id @default(uuid()) @db.Uuid
+  eventMembershipId String            @unique @db.Uuid
+  bio               String?
+  organization      String?
+  maxAssignments    Int?
+  available         Boolean           @default(true)
+  createdAt         DateTime          @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime          @updatedAt @db.Timestamptz(6)
+  eventMembership   EventMembership   @relation("JudgeProfile_eventMembershipId", fields: [eventMembershipId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  expertise         JudgeExpertise[]  @relation("JudgeExpertise_judgeProfileId")
+  judgeConflicts    JudgeConflict[]   @relation("JudgeConflict_judgeProfileId")
+  judgeAssignments  JudgeAssignment[] @relation("JudgeAssignment_judgeProfileId")
+  proposals         AssignmentRunProposal[] @relation("AssignmentRunProposal_judgeProfileId")
+  normalizedScores  NormalizedScore[] @relation("NormalizedScore_judgeProfileId")
+  judgeScoreStats   JudgeScoreStats[] @relation("JudgeScoreStats_judgeProfileId")
+}
+
+model JudgeExpertise {
+  judgeProfileId String       @db.Uuid
+  trackId        String       @db.Uuid
+  expertiseLevel Int
+  judgeProfile   JudgeProfile @relation("JudgeExpertise_judgeProfileId", fields: [judgeProfileId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  track          Track        @relation("JudgeExpertise_trackId", fields: [trackId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([judgeProfileId, trackId])
+  @@index([trackId])
+}
+
+model JudgeConflict {
+  id             String       @id @default(uuid()) @db.Uuid
+  judgeProfileId String       @db.Uuid
+  teamId         String?      @db.Uuid
+  projectId      String?      @db.Uuid
+  organization   String?
+  type           ConflictType
+  reason         String?
+  createdAt      DateTime     @default(now()) @db.Timestamptz(6)
+  judgeProfile   JudgeProfile @relation("JudgeConflict_judgeProfileId", fields: [judgeProfileId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  team           Team?        @relation("JudgeConflict_teamId", fields: [teamId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  project        Project?     @relation("JudgeConflict_projectId", fields: [projectId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([judgeProfileId])
+  @@index([teamId])
+  @@index([projectId])
+}
+
+model Rubric {
+  id          String            @id @default(uuid()) @db.Uuid
+  eventId     String            @db.Uuid
+  name        String
+  version     Int
+  status      RubricStatus      @default(DRAFT)
+  publishedAt DateTime?         @db.Timestamptz(6)
+  createdAt   DateTime          @default(now()) @db.Timestamptz(6)
+  event       Event             @relation("Rubric_eventId", fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  criteria    RubricCriterion[] @relation("RubricCriterion_rubricId")
+  evaluations Evaluation[]      @relation("Evaluation_rubricId")
+  assignmentRuns AssignmentRun[] @relation("AssignmentRun_rubricVersionId")
+  scoreRuns   ScoreRun[]        @relation("ScoreRun_rubricVersionId")
+
+  @@unique([eventId, version])
+}
+
+model RubricCriterion {
+  id           String            @id @default(uuid()) @db.Uuid
+  rubricId     String            @db.Uuid
+  name         String
+  description  String?
+  weight       Decimal           @db.Decimal(10, 9)
+  minScore     Decimal           @db.Decimal(12, 4)
+  maxScore     Decimal           @db.Decimal(12, 4)
+  displayOrder Int
+  createdAt    DateTime          @default(now()) @db.Timestamptz(6)
+  rubric       Rubric            @relation("RubricCriterion_rubricId", fields: [rubricId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  scores       EvaluationScore[] @relation("EvaluationScore_criterionId")
+
+  @@unique([rubricId, displayOrder])
+}
+
+model AssignmentRun {
+  id                   String              @id @default(uuid()) @db.Uuid
+  eventId              String              @db.Uuid
+  rubricVersionId      String              @db.Uuid
+  type                 AssignmentRunType
+  status               AssignmentRunStatus @default(PREVIEW)
+  reviewsPerSubmission Int
+  algorithm            String
+  algorithmVersion     String
+  allocationSource     String
+  previewStats         Json?               @db.JsonB
+  createdById          String              @db.Uuid
+  createdAt            DateTime            @default(now()) @db.Timestamptz(6)
+  publishedAt          DateTime?           @db.Timestamptz(6)
+  event                Event               @relation("AssignmentRun_eventId", fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  rubric               Rubric              @relation("AssignmentRun_rubricVersionId", fields: [rubricVersionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdBy            User                @relation("AssignmentRun_createdById", fields: [createdById], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  proposals            AssignmentRunProposal[] @relation("AssignmentRunProposal_runId")
+  assignments          JudgeAssignment[]   @relation("JudgeAssignment_run")
+
+  @@unique([id, rubricVersionId])
+  @@index([eventId, status])
+}
+
+model AssignmentRunProposal {
+  id             String          @id @default(uuid()) @db.Uuid
+  runId          String          @db.Uuid
+  judgeProfileId String          @db.Uuid
+  submissionId   String          @db.Uuid
+  run            AssignmentRun   @relation("AssignmentRunProposal_runId", fields: [runId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  judgeProfile   JudgeProfile    @relation("AssignmentRunProposal_judgeProfileId", fields: [judgeProfileId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  submission     Submission     @relation("AssignmentRunProposal_submissionId", fields: [submissionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([runId, judgeProfileId, submissionId])
+  @@index([runId, submissionId])
+}
+
+model JudgeAssignment {
+  id               String           @id @default(uuid()) @db.Uuid
+  eventId          String           @db.Uuid
+  runId            String           @db.Uuid
+  rubricId         String           @db.Uuid
+  judgeProfileId   String           @db.Uuid
+  submissionId     String           @db.Uuid
+  assignmentMethod AssignmentMethod
+  assignedById     String?          @db.Uuid
+  assignedAt       DateTime         @default(now()) @db.Timestamptz(6)
+  status           AssignmentStatus @default(ASSIGNED)
+  event            Event            @relation("JudgeAssignment_eventId", fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  run              AssignmentRun    @relation("JudgeAssignment_run", fields: [runId, rubricId], references: [id, rubricVersionId], onDelete: Restrict, onUpdate: Restrict)
+  judgeProfile     JudgeProfile     @relation("JudgeAssignment_judgeProfileId", fields: [judgeProfileId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  submission       Submission       @relation("JudgeAssignment_submissionId", fields: [submissionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  assignedBy       User?            @relation("JudgeAssignment_assignedById", fields: [assignedById], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  evaluation       Evaluation?      @relation("Evaluation_assignmentId")
+
+  @@unique([judgeProfileId, submissionId])
+  @@unique([id, rubricId])
+  @@index([eventId])
+  @@index([submissionId])
+  @@index([assignedById])
+}
+
+model Evaluation {
+  id               String            @id @default(uuid()) @db.Uuid
+  assignmentId     String            @unique @db.Uuid
+  rubricId         String            @db.Uuid
+  status           EvaluationStatus  @default(NOT_STARTED)
+  comments         String?
+  startedAt        DateTime?         @db.Timestamptz(6)
+  submittedAt      DateTime?         @db.Timestamptz(6)
+  lockedAt         DateTime?         @db.Timestamptz(6)
+  createdAt        DateTime          @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime          @updatedAt @db.Timestamptz(6)
+  assignment       JudgeAssignment   @relation("Evaluation_assignmentId", fields: [assignmentId, rubricId], references: [id, rubricId], onDelete: Restrict, onUpdate: Restrict)
+  rubric           Rubric            @relation("Evaluation_rubricId", fields: [rubricId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  scores           EvaluationScore[] @relation("EvaluationScore_evaluationId")
+  normalizedScores NormalizedScore[] @relation("NormalizedScore_evaluationId")
+
+  @@index([rubricId])
+  @@unique([assignmentId, rubricId])
+}
+
+model EvaluationScore {
+  id           String          @id @default(uuid()) @db.Uuid
+  evaluationId String          @db.Uuid
+  criterionId  String          @db.Uuid
+  score        Decimal         @db.Decimal(12, 4)
+  comment      String?
+  createdAt    DateTime        @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime        @updatedAt @db.Timestamptz(6)
+  evaluation   Evaluation      @relation("EvaluationScore_evaluationId", fields: [evaluationId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  criterion    RubricCriterion @relation("EvaluationScore_criterionId", fields: [criterionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([evaluationId, criterionId])
+  @@index([criterionId])
+}
+
+model ScoreRun {
+  id                       String            @id @default(uuid()) @db.Uuid
+  eventId                  String            @db.Uuid
+  status                   ScoreRunStatus    @default(CREATING)
+  algorithm                String
+  algorithmVersion         String
+  method                   String            @default("Z_SCORE")
+  methodVersion            String            @default("V1")
+  parameters               Json              @db.JsonB
+  rubricVersionId          String?           @db.Uuid
+  inputEvaluationIds       String[]          @db.Uuid
+  inputSetHash             String            @default("")
+  coverageDiagnostics      Json?             @db.JsonB
+  normalizationDiagnostics Json?             @db.JsonB
+  completedAt              DateTime?         @db.Timestamptz(6)
+  failedAt                 DateTime?         @db.Timestamptz(6)
+  failureReason            String?
+  createdById              String            @db.Uuid
+  createdAt                DateTime          @default(now()) @db.Timestamptz(6)
+  event                    Event             @relation("ScoreRun_eventId", fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdBy                User              @relation("ScoreRun_createdById", fields: [createdById], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  rubric                   Rubric?           @relation("ScoreRun_rubricVersionId", fields: [rubricVersionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  normalizedScores         NormalizedScore[] @relation("NormalizedScore_scoreRunId")
+  projectScores            ProjectScore[]    @relation("ProjectScore_scoreRunId")
+  judgeStats               JudgeScoreStats[] @relation("JudgeScoreStats_scoreRunId")
+  resultRuns               ResultRun[]       @relation("ResultRun_scoreRunId")
+
+  @@unique([eventId, method, methodVersion, inputSetHash])
+  @@index([eventId, createdAt])
+  @@index([createdById])
+}
+
+model NormalizedScore {
+  id              String        @id @default(uuid()) @db.Uuid
+  scoreRunId      String        @db.Uuid
+  evaluationId    String        @db.Uuid
+  judgeProfileId  String?       @db.Uuid
+  submissionId    String?       @db.Uuid
+  projectId       String?       @db.Uuid
+  rawScore        Decimal       @db.Decimal(20, 8)
+  normalizedScore Decimal       @db.Decimal(20, 8)
+  diagnostic      String?
+  createdAt       DateTime      @default(now()) @db.Timestamptz(6)
+  scoreRun        ScoreRun      @relation("NormalizedScore_scoreRunId", fields: [scoreRunId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  evaluation      Evaluation    @relation("NormalizedScore_evaluationId", fields: [evaluationId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  judgeProfile    JudgeProfile? @relation("NormalizedScore_judgeProfileId", fields: [judgeProfileId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  submission      Submission?   @relation("NormalizedScore_submissionId", fields: [submissionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  project         Project?      @relation("NormalizedScore_projectId", fields: [projectId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([scoreRunId, evaluationId])
+  @@index([evaluationId])
+}
+
+model ProjectScore {
+  id              String   @id @default(uuid()) @db.Uuid
+  scoreRunId      String   @db.Uuid
+  projectId       String   @db.Uuid
+  aggregatedScore Decimal  @db.Decimal(20, 8)
+  rawAverage      Decimal  @db.Decimal(20, 8) @default(0)
+  evaluationCount Int
+  requiredCount   Int      @default(0)
+  coverageComplete Boolean @default(false)
+  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+  scoreRun        ScoreRun @relation("ProjectScore_scoreRunId", fields: [scoreRunId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  project         Project  @relation("ProjectScore_projectId", fields: [projectId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([scoreRunId, projectId])
+  @@index([projectId])
+}
+
+model ResultRun {
+  id                 String          @id @default(uuid()) @db.Uuid
+  eventId            String          @db.Uuid
+  scoreRunId         String          @db.Uuid
+  status             ResultStatus    @default(DRAFT)
+  coverageIncomplete Boolean         @default(false)
+  overrideReason     String?
+  overrideActorId    String?         @db.Uuid
+  rankingPolicy      String          @default("COMPETITION")
+  rankingVersion     String          @default("V1")
+  coverageSnapshot   Json?           @db.JsonB
+  generatedAt        DateTime        @default(now()) @db.Timestamptz(6)
+  publishedAt        DateTime?       @db.Timestamptz(6)
+  createdById        String          @db.Uuid
+  event              Event           @relation("ResultRun_eventId", fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  scoreRun           ScoreRun        @relation("ResultRun_scoreRunId", fields: [scoreRunId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdBy          User            @relation("ResultRun_createdById", fields: [createdById], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  overrideActor      User?           @relation("ResultRun_overrideActorId", fields: [overrideActorId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  projectResults     ProjectResult[] @relation("ProjectResult_resultRunId")
+
+  @@unique([scoreRunId, coverageIncomplete])
+  @@index([eventId])
+  @@index([scoreRunId])
+  @@index([createdById])
+}
+
+model ProjectResult {
+  id          String    @id @default(uuid()) @db.Uuid
+  resultRunId String    @db.Uuid
+  projectId   String    @db.Uuid
+  score       Decimal   @db.Decimal(20, 8)
+  rank        Int
+  tieGroup    String?
+  createdAt   DateTime  @default(now()) @db.Timestamptz(6)
+  resultRun   ResultRun @relation("ProjectResult_resultRunId", fields: [resultRunId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  project     Project   @relation("ProjectResult_projectId", fields: [projectId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([resultRunId, projectId])
+  @@index([projectId])
+}
+
+model JudgeScoreStats {
+  id              String       @id @default(uuid()) @db.Uuid
+  scoreRunId      String       @db.Uuid
+  judgeProfileId  String       @db.Uuid
+  evaluationCount Int
+  mean            Decimal      @db.Decimal(20, 8)
+  populationStdDev Decimal     @db.Decimal(20, 8)
+  diagnostic      String?
+  createdAt       DateTime     @default(now()) @db.Timestamptz(6)
+  scoreRun        ScoreRun     @relation("JudgeScoreStats_scoreRunId", fields: [scoreRunId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  judgeProfile    JudgeProfile @relation("JudgeScoreStats_judgeProfileId", fields: [judgeProfileId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([scoreRunId, judgeProfileId])
+  @@index([scoreRunId])
+}
+
+model AuditEvent {
+  id          String   @id @default(uuid()) @db.Uuid
+  eventId     String?  @db.Uuid
+  actorUserId String?  @db.Uuid
+  action      String
+  entityType  String
+  entityId    String?  @db.Uuid
+  beforeState Json?    @db.JsonB
+  afterState  Json?    @db.JsonB
+  metadata    Json?    @db.JsonB
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  event       Event?   @relation("AuditEvent_eventId", fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  actorUser   User?    @relation("AuditEvent_actorUserId", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([eventId, createdAt])
+  @@index([entityType, entityId])
+  @@index([actorUserId, createdAt])
+}
