@@ -124,6 +124,10 @@ export function EventDetail({ eventId }: { eventId: string }) {
               <a href={`/events/${eventId}/gallery`}>View public gallery</a>
             )}
           </p>
+          <p>
+            <a href={`/events/${eventId}/vote`}>Community ballot</a> ·{' '}
+            <a href={`/events/${eventId}/voting/results`}>Community results</a>
+          </p>
           <section aria-label="Event information">
             <h2>Event information</h2>
             <p>
@@ -207,6 +211,8 @@ export function EventDetail({ eventId }: { eventId: string }) {
                 <p>
                   <a href={`/events/${eventId}/manage`}>Manage event</a> ·{' '}
                   <a href={`/events/${eventId}/judging`}>Manage judging</a>
+                  {' · '}
+                  <a href={`/events/${eventId}/voting/manage`}>Manage voting</a>
                 </p>
               )}
               {judge && (

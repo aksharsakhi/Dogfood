@@ -1,6 +1,7 @@
 'use client';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { api, GalleryProject, message, Track } from '../lib/client';
+import { ProjectComments } from './project-comments';
 
 interface GalleryResponse {
   items: GalleryProject[];
@@ -46,6 +47,10 @@ export function Gallery({ eventId }: { eventId: string }) {
       <h1>Project gallery</h1>
       <p>
         <a href={`/events/${eventId}`}>Back to event</a>
+        {' · '}
+        <a href={`/events/${eventId}/vote`}>Community ballot</a>
+        {' · '}
+        <a href={`/events/${eventId}/voting/results`}>Community results</a>
       </p>
       <form onSubmit={searchSubmit}>
         <label>
@@ -141,6 +146,7 @@ export function GalleryDetail({
               <a href={project.demoUrl}>Demo</a>
             </p>
           )}
+          <ProjectComments eventId={eventId} projectId={projectId} />
         </>
       ) : (
         !error && <p>Loading project…</p>

@@ -1,9 +1,9 @@
-# Acceptance-only fixture credentials; keep this file private.
+# Deterministic acceptance-only fixture credentials for the official submission.
 [portal]
 base_url = "http://localhost:4000"
 
 [tiers]
-claimed = ["T1", "T2"]
+claimed = ["T1", "T2", "T3"]
 pitch = "Hackathon events, team submissions, public gallery, and isolated judging."
 
 [auth]

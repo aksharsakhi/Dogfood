@@ -24,11 +24,18 @@ async function proxy(
     for (const key of [
       'content-type',
       'set-cookie',
+      'retry-after',
       'x-request-id',
       'cache-control',
     ]) {
       const value = upstream.headers.get(key);
-      if (value) responseHeaders.set(key, value);
+      if (value)
+        responseHeaders.set(
+          key,
+          key === 'set-cookie' && value.startsWith('dogfood_voter_')
+            ? value.replace(/;\s*Path=\/events\//i, '; Path=/api/events/')
+            : value,
+        );
     }
     return new Response(
       upstream.status === 204 ? null : await upstream.arrayBuffer(),

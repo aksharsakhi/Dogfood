@@ -148,6 +148,22 @@ enum ScoreRunStatus {
   FAILED
 }
 
+enum VotingAccessMode {
+  OPEN
+  EMAIL_GATED
+  AUTHENTICATED
+}
+
+enum ProjectCommentStatus {
+  VISIBLE
+  HIDDEN
+}
+
+enum PublicWriteAction {
+  VOTE
+  COMMENT
+}
+
 model User {
   id                     String            @id @default(uuid()) @db.Uuid
   email                  String            @unique @db.VarChar(320)
@@ -175,6 +191,8 @@ model User {
   createdResultRuns      ResultRun[]       @relation("ResultRun_createdById")
   resultRunOverrides     ResultRun[]       @relation("ResultRun_overrideActorId")
   auditEvents            AuditEvent[]      @relation("AuditEvent_actorUserId")
+  votingIdentities       VotingIdentity[]  @relation("VotingIdentity_userId")
+  moderatedComments      ProjectComment[]  @relation("ProjectComment_hiddenById")
 }
 
 model Session {
@@ -218,6 +236,7 @@ model Event {
   judgingClosesAt      DateTime?         @db.Timestamptz(6)
   votingOpensAt        DateTime?         @db.Timestamptz(6)
   votingClosesAt       DateTime?         @db.Timestamptz(6)
+  votingAccessMode     VotingAccessMode  @default(AUTHENTICATED)
   resultsPublishAt     DateTime?         @db.Timestamptz(6)
   minTeamSize          Int               @default(1)
   maxTeamSize          Int               @default(5)
@@ -242,7 +261,13 @@ model Event {
   scoreRuns            ScoreRun[]        @relation("ScoreRun_eventId")
   resultRuns           ResultRun[]       @relation("ResultRun_eventId")
   auditEvents          AuditEvent[]      @relation("AuditEvent_eventId")
+  votingIdentities     VotingIdentity[]  @relation("VotingIdentity_event_mode")
+  votingEmailChallenges VotingEmailChallenge[] @relation("VotingEmailChallenge_eventId")
+  communityVotes       CommunityVote[]   @relation("CommunityVote_eventId")
+  projectComments      ProjectComment[]  @relation("ProjectComment_eventId")
+  publicWriteBuckets   PublicWriteBucket[] @relation("PublicWriteBucket_eventId")
 
+  @@unique([id, votingAccessMode])
   @@index([status])
   @@index([createdById])
 }
@@ -413,8 +438,11 @@ model Project {
   projectScores  ProjectScore[]  @relation("ProjectScore_projectId")
   projectResults ProjectResult[] @relation("ProjectResult_projectId")
   normalizedScores NormalizedScore[] @relation("NormalizedScore_projectId")
+  communityVotes CommunityVote[] @relation("CommunityVote_project_event")
+  publicComments ProjectComment[] @relation("ProjectComment_project_event")
 
   @@unique([eventId, slug])
+  @@unique([id, eventId])
   @@index([teamId])
   @@index([trackId])
 }
@@ -767,4 +795,90 @@ model AuditEvent {
   @@index([eventId, createdAt])
   @@index([entityType, entityId])
   @@index([actorUserId, createdAt])
+}
+
+model VotingIdentity {
+  id              String           @id @default(uuid()) @db.Uuid
+  eventId         String           @db.Uuid
+  mode            VotingAccessMode
+  userId          String?          @db.Uuid
+  emailHash       String?          @db.Char(64)
+  emailAcceptedAt DateTime?        @db.Timestamptz(6)
+  /// A browser-held OPEN credential cannot prove one natural person.
+  openTokenHash   String?          @db.Char(64)
+  createdAt       DateTime         @default(now()) @db.Timestamptz(6)
+  event           Event            @relation("VotingIdentity_event_mode", fields: [eventId, mode], references: [id, votingAccessMode], onDelete: Restrict, onUpdate: Restrict)
+  user            User?            @relation("VotingIdentity_userId", fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  votes           CommunityVote[]  @relation("CommunityVote_identity_event")
+  comments        ProjectComment[] @relation("ProjectComment_identity_event")
+
+  @@unique([id, eventId])
+  @@unique([eventId, userId])
+  @@unique([eventId, emailHash])
+  @@unique([eventId, openTokenHash])
+  @@index([eventId, mode])
+}
+
+model VotingEmailChallenge {
+  id         String    @id @default(uuid()) @db.Uuid
+  eventId    String    @db.Uuid
+  emailHash  String    @db.Char(64)
+  tokenHash  String    @unique @db.Char(64)
+  expiresAt  DateTime  @db.Timestamptz(6)
+  consumedAt DateTime? @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(6)
+  event      Event     @relation("VotingEmailChallenge_eventId", fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([eventId, emailHash, createdAt])
+  @@index([expiresAt])
+}
+
+model CommunityVote {
+  id         String         @id @default(uuid()) @db.Uuid
+  eventId    String         @db.Uuid
+  projectId  String         @db.Uuid
+  identityId String         @db.Uuid
+  abuseSignalHash String?    @db.Char(64)
+  castAt     DateTime       @default(now()) @db.Timestamptz(6)
+  event      Event          @relation("CommunityVote_eventId", fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  project    Project        @relation("CommunityVote_project_event", fields: [projectId, eventId], references: [id, eventId], onDelete: Restrict, onUpdate: Restrict)
+  identity   VotingIdentity @relation("CommunityVote_identity_event", fields: [identityId, eventId], references: [id, eventId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([eventId, identityId])
+  @@index([eventId, projectId])
+  @@index([eventId, abuseSignalHash])
+  @@index([identityId])
+}
+
+model PublicWriteBucket {
+  eventId      String            @db.Uuid
+  action       PublicWriteAction
+  subjectHash  String            @db.Char(64)
+  windowStart  DateTime          @db.Timestamptz(6)
+  attemptCount Int               @default(0)
+  updatedAt    DateTime          @updatedAt @db.Timestamptz(6)
+  event        Event             @relation("PublicWriteBucket_eventId", fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([eventId, action, subjectHash, windowStart])
+  @@index([windowStart])
+}
+
+model ProjectComment {
+  id           String               @id @default(uuid()) @db.Uuid
+  eventId      String               @db.Uuid
+  projectId    String               @db.Uuid
+  identityId   String               @db.Uuid
+  body         String               @db.VarChar(2000)
+  status       ProjectCommentStatus @default(VISIBLE)
+  createdAt    DateTime             @default(now()) @db.Timestamptz(6)
+  hiddenAt     DateTime?            @db.Timestamptz(6)
+  hiddenById   String?              @db.Uuid
+  event        Event                @relation("ProjectComment_eventId", fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  project      Project              @relation("ProjectComment_project_event", fields: [projectId, eventId], references: [id, eventId], onDelete: Restrict, onUpdate: Restrict)
+  identity     VotingIdentity       @relation("ProjectComment_identity_event", fields: [identityId, eventId], references: [id, eventId], onDelete: Restrict, onUpdate: Restrict)
+  hiddenBy     User?                @relation("ProjectComment_hiddenById", fields: [hiddenById], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([eventId, projectId, status, createdAt])
+  @@index([identityId, createdAt])
+  @@index([hiddenById])
 }

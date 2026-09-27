@@ -4,28 +4,29 @@ An open-source, self-hostable hackathon management, submission, judging, and res
 
 ## Verification Status
 
-- **Claimed Tiers:** `T1`, `T2`
-- **Verified Tiers:** `T1`, `T2` (7/7 official acceptance checks pass)
+- **Claimed Tiers:** `T1`, `T2`, `T3`
+- **Verified Tiers:** `T1`, `T2` (7/7 official acceptance checks pass; the checker has no T3 checks)
 - **Scope:**
   - **T1:** Hackathon events, teams, versioned submissions, submission window deadlines, and public project gallery.
   - **T2:** Isolated judge evaluation workspaces, criterion rubrics, peer score blindness, participant blocking, and CSV export.
-- **T3 / T4:** Not claimed.
+  - **T3 (complete and claimed):** Configurable community ballots, public comments with organizer hiding, server-gated results, per-identity ballot order, and organizer integrity audit. T3 is covered by project tests and documentation, not by the official checker.
+- **T4:** Not claimed.
 
-The platform is designed for completely self-hosted, offline operation without third-party cloud dependencies.
+The platform runs without third-party cloud dependencies. Offline cold runtime boot is supported with prebuilt Docker images; building those images may require network access for base images and npm dependencies.
 
 ## Architecture & Documentation
 
 - [ARCHITECTURE.md](ARCHITECTURE.md): Architectural decisions, modular monolith boundaries, API conventions, and system lifecycle.
-- [DATA-MODEL.md](DATA-MODEL.md): Complete relational schema, 27 domain entities, constraints, and database triggers.
-- [JUDGING.md](JUDGING.md): Judging, scoring pipeline, Z-score normalization (`Z_SCORE_V1`), sigma=0 handling, ScoreRun/ResultRun immutability, undercoverage policy, and CSV export security.
+- [DATA-MODEL.md](DATA-MODEL.md): Relational schema, 36 domain models, constraints, and database triggers.
+- [JUDGING.md](JUDGING.md): Judging and scoring guarantees, CSV security, and the T3 voting integrity model and limitations.
 - [docs/OFFICIAL-FIXTURE-IMPORT.md](docs/OFFICIAL-FIXTURE-IMPORT.md): Fixture import semantics, deterministic UUIDs, and acceptance session token generation.
 
 ```text
-apps/web/             Next.js shell, landing page, judge & organizer workspaces
-apps/api/             NestJS/Fastify, identity, events, teams, projects, submissions, gallery, judging, audit
+apps/web/             Next.js shell, judge/organizer workspaces, public voting and comments
+apps/api/             NestJS/Fastify, identity, events, submissions, gallery, judging, voting, audit
 packages/contracts/   Shared REST wire types
 packages/shared/      Shared identity/authorization types
-prisma/               27 domain models, SQL migrations, deterministic seed, official fixture importer
+prisma/               36 domain models, SQL migrations, deterministic seed, official fixture importer
 fixtures/             Development fixture documentation
 tests/                Jest/Supertest, database invariants, Playwright workflows
 docs/                 Architecture, verification, and fixture import notes
@@ -86,7 +87,7 @@ python3 run.py .dogfood.toml --fixtures fixtures.json
 ```text
 DOGFOOD 2026 acceptance report
 portal: http://localhost:4000
-claimed: T1 T2
+claimed: T1 T2 T3
 fixtures: fixtures.json
 
 T1  gallery is public ................. PASS
@@ -97,10 +98,11 @@ T2  judge cannot see peer scores ...... PASS
 T2  participant blocked ............... PASS
 T2  csv export works .................. PASS
 
-claimed T1 T2, verified T1 T2
+claimed T1 T2 T3, verified T1 T2
+note: claimed but not verified: T3
 ```
 
-All 7/7 acceptance checks pass. The verified result is committed in [acceptance-report.txt](acceptance-report.txt).
+All 7/7 official acceptance checks cover T1 and T2. The generated result is in [acceptance-report.txt](acceptance-report.txt); the official checker does not verify T3.
 
 ### How Acceptance Fixture Sessions Are Generated
 
@@ -114,18 +116,25 @@ During automatic Docker startup (or via `npm run db:import:official`), these det
 
 `.env.example` contains public development defaults:
 
-| Variable            | Purpose                                                         |
-| ------------------- | --------------------------------------------------------------- |
-| `DATABASE_URL`      | Prisma PostgreSQL connection string                             |
-| `API_PORT`          | API listening port (default `4000`)                             |
-| `WEB_ORIGIN`        | Allowed browser origin (default `http://localhost:3000`)        |
-| `API_INTERNAL_URL`  | Server-side web -> API address (Compose sets `http://api:4000`) |
-| `POSTGRES_USER`     | PostgreSQL user (default `dogfood`)                             |
-| `POSTGRES_PASSWORD` | PostgreSQL password (default `dogfood_dev`)                     |
-| `POSTGRES_DB`       | PostgreSQL database name (default `dogfood`)                    |
-| `NODE_ENV`          | Environment mode (`development`, `test`, or `production`)       |
+| Variable              | Purpose                                                                                                    |
+| --------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`        | Prisma PostgreSQL connection string                                                                        |
+| `VOTING_TOKEN_SECRET` | Required independent voting-credential key (at least 32 non-whitespace characters); stable across restarts |
+| `API_PORT`            | API listening port (default `4000`)                                                                        |
+| `WEB_ORIGIN`          | Allowed browser origin (default `http://localhost:3000`)                                                   |
+| `API_INTERNAL_URL`    | Server-side web -> API address (Compose sets `http://api:4000`)                                            |
+| `POSTGRES_USER`       | PostgreSQL user (default `dogfood`)                                                                        |
+| `POSTGRES_PASSWORD`   | PostgreSQL password (default `dogfood_dev`)                                                                |
+| `POSTGRES_DB`         | PostgreSQL database name (default `dogfood`)                                                               |
+| `NODE_ENV`            | Environment mode (`development`, `test`, or `production`)                                                  |
 
-`docker-compose.yml` provides inline dev-safe fallbacks for all environment variables, allowing zero-configuration startup. For custom configurations, copy `.env.example` to `.env` (which is gitignored).
+`docker-compose.yml` provides a stable, publicly known **local/offline demo** default for `VOTING_TOKEN_SECRET`, allowing zero-configuration startup. Production deployments must override it with a strong independently generated secret. Non-Docker startup fails immediately if the key is missing. Keep it stable across restarts or OPEN credentials and EMAIL_GATED identity hashes change. For custom configurations, copy `.env.example` to `.env` (which is gitignored) and set the key explicitly.
+
+## T3 public voting status and limits
+
+Organizers configure OPEN, EMAIL_GATED, or AUTHENTICATED voting and a voting window in their device's local timezone; the API stores UTC instants and enforces the window using its own clock. The access mode locks when the first voting identity is created. Ballots show eligible submitted projects once each in a stable per-identity pseudorandom order. Comments appear on public gallery projects and organizers may hide them. Organizers can inspect live tallies and audit activity; everyone else receives no tally until the server clock reaches the closing instant.
+
+OPEN identifies a browser token, not a person: clearing cookies or switching browsers can produce another vote. EMAIL_GATED allows one vote per normalized email string and sends no email; it does **not** prove inbox ownership. Only AUTHENTICATED mode can reliably block voting for a project submitted by the account's own team. Rate limits are 6 vote attempts and 12 comment writes per identity per UTC-aligned ten-minute bucket; rotating OPEN tokens or changing submitted email strings can evade them. Related request fingerprints create organizer-only flags for review and **never automatically block** votes. See [JUDGING.md](JUDGING.md) for the precise integrity policy.
 
 ## Local Development (Non-Docker)
 
@@ -133,12 +142,15 @@ To run the application locally without Docker:
 
 ```bash
 cp .env.example .env
+export VOTING_TOKEN_SECRET="$(openssl rand -hex 32)"
 npm ci
 npm run db:generate
 npm run db:deploy
 npm run db:import:official
 npm run dev
 ```
+
+`VOTING_TOKEN_SECRET` is an independent signing secret. Save this strong random value privately (for example, in `.env`) and reuse it across restarts so existing OPEN voting credentials remain valid. Generate a separate strong value for each real deployment; the publicly known Docker Compose demo default is not a production secret.
 
 ### Static Quality Checks & Tests
 

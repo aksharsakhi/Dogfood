@@ -146,3 +146,101 @@ code {
 section {
   margin-block: 24px;
 }
+
+.voting-mode-grid,
+.voting-ballot-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+  gap: 14px;
+  max-width: none;
+}
+.voting-mode-card,
+.voting-ballot-list li {
+  display: block;
+  padding: 18px;
+  border: 1px solid #dce2d8;
+  border-radius: 10px;
+  background: #fff;
+}
+.voting-mode-card {
+  cursor: pointer;
+}
+.voting-mode-card:has(input:checked) {
+  border-color: #246341;
+  box-shadow: inset 0 0 0 1px #246341;
+  background: #f2f8f2;
+}
+.voting-mode-heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 750;
+}
+.voting-mode-heading input {
+  width: auto;
+  margin: 0;
+}
+.voting-mode-description {
+  display: block;
+  margin-top: 10px;
+  color: #526258;
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 400;
+}
+.voting-lock-note,
+.voting-confirmation {
+  border-left: 4px solid #246341;
+  padding-left: 16px;
+}
+.voting-selected-mode {
+  font-weight: 700;
+}
+.voting-ballot-list {
+  list-style: none;
+  padding: 0;
+}
+.voting-ballot-list h3 {
+  margin-top: 0;
+}
+.voting-tally-list,
+.voting-audit-list,
+.voting-comment-list {
+  list-style: none;
+  padding: 0;
+  max-width: 760px;
+}
+.voting-tally-list li,
+.voting-audit-list li,
+.voting-comment-list li {
+  padding: 14px 0;
+  border-bottom: 1px solid #dce2d8;
+}
+.voting-tally-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+}
+.voting-audit-list li > span,
+.voting-comment-list small {
+  display: block;
+  color: #526258;
+  font-size: 13px;
+  margin-top: 4px;
+}
+.voting-audit-flag {
+  background: #fff5e8;
+  border-left: 4px solid #a76821;
+  padding-left: 12px !important;
+}
+.voting-comment-list button {
+  margin-top: 10px;
+}
+@media (max-width: 640px) {
+  .voting-tally-list li {
+    display: block;
+  }
+  .voting-tally-list strong {
+    display: block;
+  }
+}

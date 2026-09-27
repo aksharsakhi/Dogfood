@@ -27,6 +27,8 @@
     "db:import:official": "tsx prisma/import-official-fixtures.ts",
     "test:official:acceptance": "jest --config jest.official-acceptance.config.cjs --runInBand",
     "test:db": "tsx tests/database.integration.ts",
+    "test:t3a:db": "tsx tests/t3a.database.integration.ts",
+    "test:t3b": "jest --config jest.t3b.config.cjs --runInBand",
     "test:phase2": "jest --config jest.phase2.config.cjs --runInBand",
     "test:phase3": "jest --config jest.phase3.config.cjs --runInBand",
     "test:phase4a:stage1": "jest --config jest.phase4a.stage1.config.cjs --runInBand",

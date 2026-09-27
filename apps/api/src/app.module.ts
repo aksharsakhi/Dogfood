@@ -8,6 +8,7 @@ import { ProjectsModule } from './modules/projects/projects.module';
 import { HealthModule } from './modules/health/health.module';
 import { TimeModule } from './common/time.module';
 import { JudgingModule } from './modules/judging/judging.module';
+import { CommunityVotingModule } from './modules/community-voting/voting.module';
 @Module({
   imports: [
     DatabaseModule,
@@ -19,6 +20,7 @@ import { JudgingModule } from './modules/judging/judging.module';
     ProjectsModule,
     HealthModule,
     JudgingModule,
+    CommunityVotingModule,
   ],
 })
 export class AppModule {}

@@ -8,9 +8,17 @@ A User has no event role. EventMembership is unique by `(eventId, userId, role)`
 
 Contextual policies combine active event membership and team ownership. ADMIN bypasses event organizer checks as an explicit platform policy. Never trust a request-supplied role. Submission snapshots and judging evaluation workspaces enforce strict role and assignment isolation.
 
+## Community voting boundary (T3)
+
+The API owns identity resolution, window and project eligibility, rate limits, vote insertion, result visibility, moderation, and audit records. The Next.js UI presents those decisions. OPEN issues a signed, HttpOnly, event-scoped browser credential; the database stores only its random token hash. EMAIL_GATED keys an identity by a keyed hash of the submitted normalized email string and does not verify inbox ownership. AUTHENTICATED reuses the active T1 session. A composite foreign key from `VotingIdentity(eventId, mode)` to `Event(id, votingAccessMode)` prevents changing mode after an identity exists, including a race at first creation. The organizer config read reports the lock without creating an identity.
+
+Vote casting locks the event and project, checks the server-clock interval `[votingOpensAt, votingClosesAt)`, current event mode and eligible submitted snapshot, and writes one `CommunityVote` with an audit record transactionally. The `(eventId, identityId)` unique key resolves concurrent duplicates. AUTHENTICATED mode also rejects a project whose team includes that account. OPEN and EMAIL_GATED cannot reliably determine the person and cannot reliably prevent self-voting. The API denies public results before close while organizers can read live tallies. A keyed per-identity permutation orders ballots without counts. Visible comments are cursor-paged by `(createdAt, id)`; hiding is organizer-only and audited. Durable `PublicWriteBucket` counters limit writes across API processes, while shared request fingerprints produce organizer-only review flags, never automatic vote rejection. `VotingEmailChallenge` remains unused.
+
+The web proxy forwards the event-scoped OPEN cookie with a `/api/events/.../voting` browser path and the API retry header. In production, cookie `Secure` requires HTTPS at the user-facing origin. `VOTING_TOKEN_SECRET` is required at API boot; Compose supplies a stable, publicly known local/offline demo default only. Production needs an independent secret. Changing it invalidates OPEN credentials and changes EMAIL_GATED identity hashes.
+
 ## Relational boundaries
 
-All 27 entities are in `prisma/schema.prisma`. UUIDs identify entities; natural join keys identify PlatformRole and JudgeExpertise. Decimal fields store scores, weights and money. Dates use PostgreSQL timestamptz; the event timezone is an IANA name that future event DTOs must validate. JSONB is limited to flexible registration metadata, score-run parameters and audit snapshots.
+All 36 models are in `prisma/schema.prisma`. UUIDs identify entities; natural join keys identify PlatformRole and JudgeExpertise. Decimal fields store scores, weights and money. Dates use PostgreSQL timestamptz; the event timezone is an IANA name that future event DTOs must validate. JSONB is limited to flexible registration metadata, score-run parameters and audit snapshots.
 
 EventMembership supports multiple event roles. TeamMember carries eventId solely to enforce the partial unique index on `(eventId,userId) WHERE leftAt IS NULL`. Its composite FK guarantees that eventId matches Team. A departed member retains their row; rejoining the same team updates that membership. Full membership interval history belongs in audit events later.
 

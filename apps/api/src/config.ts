@@ -6,6 +6,7 @@ import {
   IsUrl,
   Max,
   Min,
+  MinLength,
   validateSync,
 } from 'class-validator';
 import { config } from 'dotenv';
@@ -23,6 +24,10 @@ class Environment {
   @IsString()
   DATABASE_URL!: string;
 
+  @IsString()
+  @MinLength(32)
+  VOTING_TOKEN_SECRET!: string;
+
   @IsUrl({
     require_tld: false,
     protocols: ['http', 'https'],
@@ -37,11 +42,19 @@ export function loadEnvironment() {
     API_PORT: Number(process.env.API_PORT ?? 4000),
   });
   if (
+    typeof env.VOTING_TOKEN_SECRET !== 'string' ||
+    env.VOTING_TOKEN_SECRET.replace(/\s/g, '').length < 32
+  ) {
+    throw new Error(
+      'VOTING_TOKEN_SECRET is required at API startup and must contain at least 32 non-whitespace characters.',
+    );
+  }
+  if (
     validateSync(env).length ||
     !/^postgres(ql)?:\/\//.test(env.DATABASE_URL ?? '')
   ) {
     throw new Error(
-      'Invalid environment: check DATABASE_URL, API_PORT, WEB_ORIGIN and NODE_ENV.',
+      'Invalid environment: check DATABASE_URL, VOTING_TOKEN_SECRET, API_PORT, WEB_ORIGIN and NODE_ENV.',
     );
   }
   return env;

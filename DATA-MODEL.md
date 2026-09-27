@@ -1,6 +1,6 @@
 # DogFood Relational Data Model
 
-This document specifies the complete relational schema, table structures, column definitions, constraints, relations, and database-level invariants for the DogFood Hackathon Platform, with detailed focus on Phase 4A (Judging, Allocations, Evaluations) and Phase 4B (Scoring, Normalization, Results, and CSV Exports).
+This document describes the 36-model relational schema and its database invariants, with detail on judging, scoring, results, and T3 community voting.
 
 ---
 
@@ -19,6 +19,10 @@ erDiagram
   Event ||--o{ ScoreRun : "computes"
   Event ||--o{ ResultRun : "publishes"
   Event ||--o{ AuditEvent : "logs"
+  Event ||--o{ VotingIdentity : "identifies voters"
+  Event ||--o{ CommunityVote : "collects votes"
+  Event ||--o{ ProjectComment : "hosts comments"
+  Event ||--o{ PublicWriteBucket : "limits writes"
 
   User ||--o{ EventMembership : "holds"
   User ||--o{ Session : "authenticates"
@@ -36,6 +40,11 @@ erDiagram
   Project ||--o{ Submission : "versions"
   Project ||--o{ ProjectScore : "scores"
   Project ||--o{ ProjectResult : "ranks"
+  Project ||--o{ CommunityVote : "receives votes"
+  Project ||--o{ ProjectComment : "receives comments"
+
+  VotingIdentity ||--o| CommunityVote : "casts"
+  VotingIdentity ||--o{ ProjectComment : "writes"
 
   Rubric ||--|{ RubricCriterion : "contains"
   Rubric ||--o{ AssignmentRun : "binds"
@@ -437,3 +446,26 @@ Append-only tamper-evident event log.
 | `ProjectResult_guard`              | `ProjectResult`   | `UPDATE, DELETE`         | Project rankings are immutable                             |
 | `dogfood_result_run_event_guard`   | `ResultRun`       | `BEFORE INSERT`          | Ensures parent `scoreRunId` belongs to the same `eventId`  |
 | `dogfood_audit_event_guard`        | `AuditEvent`      | `UPDATE, DELETE`         | Audit logs are append-only                                 |
+
+---
+
+## 9. Public Voting (T3)
+
+`VotingIdentity` records one event-scoped voting credential in the event's configured `VotingAccessMode`. Its composite foreign key to `Event(id, votingAccessMode)` prevents changing an event's mode after an identity exists. A database check allows only the credential fields appropriate to that mode.
+
+| Column            | Type                       | Meaning                                                                                    |
+| :---------------- | :------------------------- | :----------------------------------------------------------------------------------------- |
+| `eventId`         | `UUID`                     | Event whose access mode governs this identity                                              |
+| `mode`            | `VotingAccessMode`         | `OPEN`, `EMAIL_GATED`, or `AUTHENTICATED`                                                  |
+| `userId`          | `UUID`, nullable           | Existing account for AUTHENTICATED mode                                                    |
+| `openTokenHash`   | `CHAR(64)`, nullable       | Hash of a browser credential in OPEN mode; identifies a token, not a person                |
+| `emailHash`       | `CHAR(64)`, nullable       | Keyed hash of the normalized submitted email string in EMAIL_GATED mode                    |
+| `emailAcceptedAt` | `TIMESTAMPTZ(6)`, nullable | Time the email string was accepted; **not proof of inbox ownership or email verification** |
+
+EMAIL_GATED enforces uniqueness of the submitted normalized email string per event. DogFood sends no email and cannot establish that the voter controls the inbox. `VotingEmailChallenge` is unused. The rename from the misleading T3A column name is applied by the separate `202609260002_voting_email_accepted_at` migration; the existing credential-shape check remains enforced.
+
+`CommunityVote` references both `Project` and `VotingIdentity` through composite `(id, eventId)` foreign keys, so neither can belong to another event. The unique `(eventId, identityId)` index is the database's one-vote-per-identity guard under concurrency. `castAt` stores the server-clock instant; `abuseSignalHash` is a keyed request fingerprint for review, not a rejection key. The vote and its `AuditEvent` are inserted in one transaction.
+
+`ProjectComment` has the same event-scoped project and identity foreign keys, a 2,000-character `body`, `VISIBLE`/`HIDDEN` status, and moderation actor/time columns. A check requires the hidden status and moderation fields to agree. The public read filters to visible comments, pages by `(createdAt, id)`, and escapes returned text; the organizer hide action and its audit event are transactional. `PublicWriteBucket` uses `(eventId, action, subjectHash, windowStart)` as its primary key; atomic upserts count write attempts across processes and restarts. A check prevents negative counts. The limits are service policy: six vote attempts or twelve comment attempts per identity per UTC-aligned ten-minute bucket.
+
+`Event.votingAccessMode`, `votingOpensAt`, and `votingClosesAt` hold configuration. The identity-to-event composite foreign key locks the mode after the first identity. The service checks the half-open voting interval using its own UTC instant and hides tallies from non-organizers until close. The database does not itself enforce voting time, project submission eligibility, self-voting, ballot order, result visibility, or rate-limit thresholds; those are API policies. OPEN credentials identify browser tokens, not people. EMAIL_GATED records a submitted email string, not inbox control. Only AUTHENTICATED mode can reliably apply team-based self-vote rejection. `VotingEmailChallenge` is dormant and performs no email verification.

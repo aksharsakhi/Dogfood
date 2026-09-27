@@ -21,6 +21,8 @@ services:
       target: api
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-dogfood}:${POSTGRES_PASSWORD:-dogfood_dev}@postgres:5432/${POSTGRES_DB:-dogfood}?schema=public
+      # Local/offline demo default only. Production must override with an independently generated secret.
+      VOTING_TOKEN_SECRET: ${VOTING_TOKEN_SECRET:-dogfood-local-demo-voting-secret-not-for-production-2026}
       API_PORT: 4000
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:3000}
     ports:

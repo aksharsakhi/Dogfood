@@ -237,6 +237,10 @@ export function EventEditor({ eventId }: { eventId?: string }) {
       {eventId && (
         <p>
           <a href={`/events/${eventId}/judging`}>Judging setup and progress</a>
+          {' · '}
+          <a href={`/events/${eventId}/voting/manage`}>
+            Voting setup and audit
+          </a>
         </p>
       )}
       <form onSubmit={save} key={event?.id ?? 'new'}>

@@ -22,6 +22,9 @@ export interface Event {
   submissionClosesAt: string | null;
   judgingOpensAt: string | null;
   judgingClosesAt: string | null;
+  votingAccessMode: 'OPEN' | 'EMAIL_GATED' | 'AUTHENTICATED';
+  votingOpensAt: string | null;
+  votingClosesAt: string | null;
   resultsPublishAt: string | null;
   minTeamSize: number;
   maxTeamSize: number;
