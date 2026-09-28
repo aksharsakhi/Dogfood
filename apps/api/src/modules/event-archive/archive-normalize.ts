@@ -23,6 +23,7 @@ export function semanticNormalize(
     return value;
   };
   const event = reverse(archive.payload.event) as Record<string, unknown>;
+  event.embedAllowedOrigins ??= [];
   event.slug = '<destination-slug>';
   event.createdById = '<importing-organizer>';
   event.status = '<destination-publication>';

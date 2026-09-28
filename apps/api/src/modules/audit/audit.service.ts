@@ -16,6 +16,8 @@ export const webhookTypes: Record<string, string> = {
   EVENT_CREATED: 'event.created',
   EVENT_UPDATED: 'event.updated',
   EVENT_PUBLISHED: 'event.published',
+  EVENT_EMBED_CONFIG_CHANGED: 'event.embed.config.changed',
+  EVENT_IMPORTED: 'event.imported',
   TRACK_CREATED: 'track.created',
   TRACK_UPDATED: 'track.updated',
   TRACK_DELETED: 'track.deleted',
@@ -61,12 +63,15 @@ export const webhookTypes: Record<string, string> = {
   COMMUNITY_VOTE_FLAGGED: 'community.vote.flagged',
   PROJECT_COMMENT_POSTED: 'project.comment.posted',
   PROJECT_COMMENT_HIDDEN: 'project.comment.hidden',
+  JUDGE_PARTICIPATION_RECORD_ISSUED: 'judge.participation.record.issued',
+  JUDGE_PARTICIPATION_RECORD_REVOKED: 'judge.participation.record.revoked',
 };
 
 const safeMetadataKeys = new Set([
   'projectId',
   'submissionId',
   'judgeProfileId',
+  'recordId',
   'runId',
   'rubricId',
   'rubricVersionId',

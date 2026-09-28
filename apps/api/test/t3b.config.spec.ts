@@ -1,4 +1,18 @@
 import { loadEnvironment } from '../src/config';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+function composeDemoDefault(name: string): string {
+  const compose = readFileSync(
+    resolve(__dirname, '../../../docker-compose.yml'),
+    'utf8',
+  );
+  const match = compose.match(
+    new RegExp(`^\\s*${name}:\\s*\\$\\{${name}:-([^}]*)\\}`, 'm'),
+  );
+  if (!match) throw new Error(`Missing Compose default for ${name}`);
+  return match[1]!;
+}
 
 describe('voting and webhook secret boot configuration', () => {
   const previous = process.env.VOTING_TOKEN_SECRET;
@@ -100,6 +114,32 @@ describe('voting and webhook secret boot configuration', () => {
     expect(() => loadEnvironment()).toThrow(
       'JUDGE_RECORD_SIGNING_KEY_SEED is the public local/demo default; production must provide an independently generated seed.',
     );
+  });
+
+  it.each(['VOTING_TOKEN_SECRET', 'WEBHOOK_ENCRYPTION_KEY'] as const)(
+    'rejects the public Compose demo %s in production mode',
+    (name) => {
+      process.env.NODE_ENV = 'production';
+      process.env.VOTING_TOKEN_SECRET =
+        'production-voting-test-secret-independent-32-chars';
+      process.env.WEBHOOK_ENCRYPTION_KEY =
+        'production-webhook-test-key-independent-32-chars';
+      process.env.JUDGE_RECORD_SIGNING_KEY_SEED = 'a'.repeat(64);
+      process.env[name] = composeDemoDefault(name);
+      expect(() => loadEnvironment()).toThrow(
+        `${name} is the public local/demo default; production must provide an independently generated secret.`,
+      );
+    },
+  );
+
+  it('accepts valid independent production replacements', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.VOTING_TOKEN_SECRET =
+      'production-voting-test-secret-independent-32-chars';
+    process.env.WEBHOOK_ENCRYPTION_KEY =
+      'production-webhook-test-key-independent-32-chars';
+    process.env.JUDGE_RECORD_SIGNING_KEY_SEED = 'a'.repeat(64);
+    expect(loadEnvironment().NODE_ENV).toBe('production');
   });
 
   it('accepts a deterministic 32-byte Ed25519 seed independent of other secrets', () => {

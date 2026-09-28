@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { plainToInstance } from 'class-transformer';
 import {
   IsIn,
@@ -54,6 +55,25 @@ export function loadEnvironment() {
   ) {
     throw new Error(
       'VOTING_TOKEN_SECRET is required at API startup and must contain at least 32 non-whitespace characters.',
+    );
+  }
+  if (
+    env.NODE_ENV === 'production' &&
+    createHash('sha256').update(env.VOTING_TOKEN_SECRET).digest('hex') ===
+      '575378bc65b41872209d14d3a598dd26f6c49c4e3c21391066cebd0f70ab6e64'
+  ) {
+    throw new Error(
+      'VOTING_TOKEN_SECRET is the public local/demo default; production must provide an independently generated secret.',
+    );
+  }
+  if (
+    env.NODE_ENV === 'production' &&
+    typeof env.WEBHOOK_ENCRYPTION_KEY === 'string' &&
+    createHash('sha256').update(env.WEBHOOK_ENCRYPTION_KEY).digest('hex') ===
+      'e8365975051ad0b393da4833b2078399d8005abbddd843c91f948b77cdcea951'
+  ) {
+    throw new Error(
+      'WEBHOOK_ENCRYPTION_KEY is the public local/demo default; production must provide an independently generated secret.',
     );
   }
   if (

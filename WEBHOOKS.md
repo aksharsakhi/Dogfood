@@ -3,17 +3,71 @@
 T4A emits version 1 webhooks for meaningful server-side domain mutations made
 through the REST API. Reads, navigation, filtering, pagination, and local-only
 UI state do not emit webhooks. Authentication lifecycle operations (register,
-login, and logout) are intentionally excluded. This is the product's coverage
+login, and logout) are intentionally excluded because they are global identity/session operations rather than event-domain changes and would disclose authentication activity. Webhook subscription administration, delivery, retry, and replay are intentionally excluded to avoid recursive notifications about the transport itself. Archive export and preview, CSV export, certificate reads, and key rotation are read-only or internal operations rather than completed event-domain mutations. This is the product's coverage
 policy for this implementation, not a claim that the T4 specification explicitly
 exempts those operations.
+
+Public event types (existing subscriptions keep their selected types; `*` continues to match all):
+
+- `event.created`
+- `event.updated`
+- `event.published`
+- `event.embed.config.changed`
+- `event.imported`
+- `track.created`
+- `track.updated`
+- `track.deleted`
+- `prize.created`
+- `prize.updated`
+- `prize.deleted`
+- `registration.created`
+- `registration.withdrawn`
+- `team.created`
+- `team.updated`
+- `team.member.left`
+- `team.member.removed`
+- `team.disbanded`
+- `team.invitation.created`
+- `team.invitation.revoked`
+- `team.invitation.accepted`
+- `team.invitation.rejected`
+- `project.created`
+- `project.updated`
+- `submission.draft.created`
+- `submission.draft.updated`
+- `submission.submitted`
+- `judge.invited`
+- `judge.invite.revoked`
+- `judge.accepted`
+- `judge.profile.updated`
+- `judge.conflict.declared`
+- `judge.conflict.removed`
+- `rubric.created`
+- `rubric.updated`
+- `rubric.published`
+- `assignment.run.created`
+- `assignment.run.published`
+- `judge.assignment.created`
+- `evaluation.draft.saved`
+- `evaluation.submitted`
+- `scoring.run.created`
+- `results.run.created`
+- `results.coverage.override`
+- `voting.identity.created`
+- `voting.config.changed`
+- `community.vote.cast`
+- `community.vote.flagged`
+- `project.comment.posted`
+- `project.comment.hidden`
+- `judge.participation.record.issued`
+- `judge.participation.record.revoked`
 
 The logical event and its matching deliveries are stored in PostgreSQL in the
 same transaction as the domain mutation. The payload is a compact envelope with
 `schemaVersion`, `eventType`, `deliveryId`, `occurredAt`, `eventId`, and relevant
 entity/context IDs. Deletion messages include a compact tombstone. Consumers can
 fetch current resource details through REST where a resource still exists.
-Payloads omit session tokens, passwords, webhook secrets, voting credentials,
-private abuse fingerprints, and full entity snapshots.
+Payloads omit session tokens, passwords, webhook secrets, signing seeds/private keys, voting credentials, private abuse fingerprints, and full entity snapshots. Judge record events contain public record/revocation IDs and judge-profile ID only; they carry no signature or private signing material. Embed configuration events identify the event but do not reproduce the origin allowlist. A successful archive import emits one `event.imported` outbox event for the newly created destination event, never one event per imported historical row. Preview, failed import, and idempotent reconfirmation emit none. Imported subscriptions are disabled and secretless, so no import delivery is sent to them; source webhook history is never replayed. The destination is new and has no previously active subscriptions, so the completion outbox event initially has no deliveries.
 
 Delivery is at least once. A receiver may see a duplicate, including when the
 receiver accepted a message but its response was lost. Consumers must deduplicate
@@ -59,8 +113,9 @@ intentionally unsupported in this phase to reduce SSRF risk. A DNS change to a
 blocked address causes delivery to fail safely and enter the retry policy.
 
 Webhook management, delivery inspection, and replay are organizer-only and use
-the existing HttpOnly session-cookie REST authorization. This initial REST API
-does not add API keys, bearer tokens, PATs, OAuth clients, or other machine
+the existing HttpOnly session-cookie REST authorization. Webhook subscription
+administration currently provides REST routes but no web management UI. This initial
+REST API does not add API keys, bearer tokens, PATs, OAuth clients, or other machine
 credentials. Failed destinations do not affect committed domain state or API
 availability.
 

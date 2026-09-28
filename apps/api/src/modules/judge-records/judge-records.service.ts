@@ -281,6 +281,7 @@ export class JudgeRecordsService implements OnModuleInit {
           entityId: record.id,
           eventId,
           actorUserId: principal.userId,
+          metadata: { judgeProfileId },
         });
         return {
           ...record,
@@ -404,6 +405,7 @@ export class JudgeRecordsService implements OnModuleInit {
           entityId: revocation.id,
           eventId,
           actorUserId: principal.userId,
+          metadata: { recordId },
         });
         return { ...revocation, recordId, issuerKeyId: this.signingKey.keyId };
       });

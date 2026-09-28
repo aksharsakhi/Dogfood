@@ -3,6 +3,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api, Event, message, Prize, Registration, Track } from '../lib/client';
 import { ArchiveManager } from './archive-manager';
+import { EmbedSettings } from './embed-settings';
 
 function dateParts(value: Date, timeZone: string) {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -618,6 +619,9 @@ export function EventEditor({ eventId }: { eventId?: string }) {
       {notice && <p role="status">{notice}</p>}
       {error && <p role="alert">{error}</p>}
       {eventId && <ArchiveManager eventId={eventId} />}
+      {eventId && event && (
+        <EmbedSettings eventId={eventId} eventName={event.name} />
+      )}
     </main>
   );
 }

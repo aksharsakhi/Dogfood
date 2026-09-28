@@ -1,6 +1,8 @@
 import { EventVisibility, GalleryVisibility } from '@prisma/client';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsDateString,
   IsEnum,
   IsInt,
@@ -14,6 +16,13 @@ import {
   MinLength,
   ValidateIf,
 } from 'class-validator';
+export class EmbedOriginsDto {
+  @ApiProperty({ type: [String], description: 'Exact HTTP(S) web origins' })
+  @IsArray()
+  @ArrayMaxSize(50)
+  @IsString({ each: true })
+  allowedOrigins!: string[];
+}
 const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export class EventConfigurationDto {
   @ApiPropertyOptional()

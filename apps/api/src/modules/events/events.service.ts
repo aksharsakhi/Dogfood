@@ -6,6 +6,7 @@ import { AccessService } from '../../common/auth/access.service';
 import { Clock } from '../../common/time';
 import { fail } from '../../common/errors/domain-error';
 import { AuditService } from '../audit/audit.service';
+import { canonicalEmbedOrigins } from './embed-origins';
 import {
   CreateEventDto,
   EventConfigurationDto,
@@ -121,6 +122,46 @@ export class EventsService {
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(Clock) private readonly clock: Clock,
   ) {}
+  async embedConfig(principal: SessionPrincipal, eventId: string) {
+    if (!(await this.access.hasRole(principal, eventId, 'ORGANIZER')))
+      fail(403, 'FORBIDDEN', 'Organizer access is required for this event.');
+    const event = await this.db.event.findUnique({
+      where: { id: eventId },
+      select: { embedAllowedOrigins: true },
+    });
+    if (!event) fail(404, 'EVENT_NOT_FOUND', 'Event was not found.');
+    return { allowedOrigins: event.embedAllowedOrigins };
+  }
+  async updateEmbedConfig(
+    principal: SessionPrincipal,
+    eventId: string,
+    allowedOrigins: unknown,
+  ) {
+    if (!(await this.access.hasRole(principal, eventId, 'ORGANIZER')))
+      fail(403, 'FORBIDDEN', 'Organizer access is required for this event.');
+    const canonical = canonicalEmbedOrigins(allowedOrigins);
+    return this.db.$transaction(async (tx) => {
+      const before = await tx.event.findUnique({
+        where: { id: eventId },
+        select: { embedAllowedOrigins: true },
+      });
+      if (!before) fail(404, 'EVENT_NOT_FOUND', 'Event was not found.');
+      await tx.event.update({
+        where: { id: eventId },
+        data: { embedAllowedOrigins: canonical },
+      });
+      await this.audit.record(tx, {
+        action: 'EVENT_EMBED_CONFIG_CHANGED',
+        entityType: 'Event',
+        entityId: eventId,
+        eventId,
+        actorUserId: principal.userId,
+        beforeState: { allowedOrigins: before.embedAllowedOrigins },
+        afterState: { allowedOrigins: canonical },
+      });
+      return { allowedOrigins: canonical };
+    });
+  }
   private async configurable(eventId: string): Promise<void> {
     const event = await this.db.event.findUnique({
       where: { id: eventId },

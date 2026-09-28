@@ -265,11 +265,41 @@ describe('T4B certificates and signed judge participation records', () => {
   });
 
   it('issues public, PII-free signatures and restricts judge record views by ownership', async () => {
+    const outboxBefore = await db.webhookOutboxEvent.count({
+      where: { eventId, eventType: 'judge.participation.record.issued' },
+    });
     const issued = await post(
       `/events/${eventId}/judge-records/${judgeProfileId}`,
       {},
       organizer.cookie,
     ).expect(201);
+    const issueEvents = await db.webhookOutboxEvent.findMany({
+      where: { eventId, eventType: 'judge.participation.record.issued' },
+      orderBy: { occurredAt: 'desc' },
+      take: 1,
+    });
+    expect(
+      await db.webhookOutboxEvent.count({
+        where: { eventId, eventType: 'judge.participation.record.issued' },
+      }),
+    ).toBe(outboxBefore + 1);
+    expect(issueEvents[0]?.payload).toMatchObject({
+      eventId,
+      eventType: 'judge.participation.record.issued',
+      entity: { type: 'JudgeParticipationRecord', id: issued.body.id },
+      judgeProfileId,
+    });
+    const serializedWebhook = JSON.stringify(issueEvents[0]?.payload);
+    for (const forbidden of [
+      process.env.JUDGE_RECORD_SIGNING_KEY_SEED,
+      process.env.WEBHOOK_ENCRYPTION_KEY,
+      process.env.VOTING_TOKEN_SECRET,
+      organizer.cookie,
+    ])
+      if (forbidden) expect(serializedWebhook).not.toContain(forbidden);
+    expect(serializedWebhook).not.toMatch(
+      /passwordHash|signingSecret|privateKey|secretCiphertext|canonicalPayload|signature/,
+    );
     expect(issued.body.payload).toMatchObject({
       schemaVersion: 1,
       eventId,
@@ -347,6 +377,12 @@ describe('T4B certificates and signed judge participation records', () => {
   });
 
   it('corrects and revokes by appending signed statements without invalidating prior signatures', async () => {
+    const issuedBefore = await db.webhookOutboxEvent.count({
+      where: { eventId, eventType: 'judge.participation.record.issued' },
+    });
+    const revokedBefore = await db.webhookOutboxEvent.count({
+      where: { eventId, eventType: 'judge.participation.record.revoked' },
+    });
     const original = await post(
       `/events/${eventId}/judge-records/${judgeProfileId}`,
       {},
@@ -371,6 +407,36 @@ describe('T4B certificates and signed judge participation records', () => {
       {},
       organizer.cookie,
     ).expect(201);
+    expect(
+      await db.webhookOutboxEvent.count({
+        where: { eventId, eventType: 'judge.participation.record.issued' },
+      }),
+    ).toBe(issuedBefore + 2);
+    expect(
+      await db.webhookOutboxEvent.count({
+        where: { eventId, eventType: 'judge.participation.record.revoked' },
+      }),
+    ).toBe(revokedBefore + 1);
+    const revokeEvent = await db.webhookOutboxEvent.findFirstOrThrow({
+      where: { eventId, eventType: 'judge.participation.record.revoked' },
+      orderBy: { occurredAt: 'desc' },
+    });
+    expect(revokeEvent.payload).toMatchObject({
+      recordId: correction.body.id,
+      eventId,
+      eventType: 'judge.participation.record.revoked',
+    });
+    const serializedRevoke = JSON.stringify(revokeEvent.payload);
+    for (const forbidden of [
+      process.env.JUDGE_RECORD_SIGNING_KEY_SEED,
+      process.env.WEBHOOK_ENCRYPTION_KEY,
+      process.env.VOTING_TOKEN_SECRET,
+      organizer.cookie,
+    ])
+      if (forbidden) expect(serializedRevoke).not.toContain(forbidden);
+    expect(serializedRevoke).not.toMatch(
+      /passwordHash|signingSecret|privateKey|secretCiphertext|canonicalPayload|signature/,
+    );
     const revoked = await get(
       `/judge-records/${correction.body.id}/verify`,
     ).expect(200);
@@ -390,6 +456,16 @@ describe('T4B certificates and signed judge participation records', () => {
       {},
       participant.cookie,
     ).expect(403);
+    expect(
+      await db.webhookOutboxEvent.count({
+        where: { eventId, eventType: 'judge.participation.record.issued' },
+      }),
+    ).toBe(issuedBefore + 2);
+    expect(
+      await db.webhookOutboxEvent.count({
+        where: { eventId, eventType: 'judge.participation.record.revoked' },
+      }),
+    ).toBe(revokedBefore + 1);
 
     await expect(
       db.judgeParticipationRecord.update({

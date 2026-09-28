@@ -1,6 +1,6 @@
 # DogFood Relational Data Model
 
-This document describes the 45-model relational schema and its database invariants, with detail on judging, scoring, results, T3 community voting, T4A webhooks, and T4B judge participation records.
+This document describes the 51-model relational schema and its database invariants, with detail on judging, scoring, results, T3 community voting, T4A webhooks, and T4B judge participation records.
 
 ---
 
@@ -504,5 +504,7 @@ EMAIL_GATED enforces uniqueness of the submitted normalized email string per eve
 Signature validity is computed from the persisted canonical payload and the record's historical public key. ACTIVE/SUPERSEDED/REVOKED status is derived from the append-only correction and revocation relations, not folded into the cryptographic result. Printable certificates are generated on demand from event registration and immutable submitted-snapshot/team-membership data; they are HTML, not persisted certificates or generated PDF files.
 
 # T4C archive provenance and privacy
+
+`Event.embedAllowedOrigins` is a `TEXT[]` with an empty default. The API stores sorted, canonical exact HTTP(S) origins only; an empty list means `frame-ancestors 'none'` for the dedicated embed document. The additive T4D migration does not alter publication state. The optional v1 archive field preserves this configuration while older v1 packages remain valid; imported events remain draft/private/gallery-hidden.
 
 `EventArchiveInstance` stores a stable local source identifier. `EventArchivePreview` binds an actor and exact package hash for one hour. `EventArchiveImport` uniquely keys source instance, source event, and package hash to one destination event; `EventArchiveEntityMap` records deterministic source-to-destination IDs. `ImportedVoteAggregate` stores only project totals, and `ImportedProjectComment` stores organizer-owned comment evidence with an unclaimed author placeholder. `User.importedPlaceholder` is constrained to deactivated, unverified `@archive.invalid` accounts with null `passwordHash`; triggers prohibit sessions and platform roles for such users. Imported webhook subscriptions have nullable secret storage only while disabled and require a new destination secret before activation. Judge participation records carry nullable source instance/event/record provenance as an all-or-none, immutable tuple. Both additive T4C migrations preserve prior foreign keys and immutable-domain triggers. See [archive specification](docs/EVENT-ARCHIVE.md).

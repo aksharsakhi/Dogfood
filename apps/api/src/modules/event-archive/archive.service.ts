@@ -248,7 +248,10 @@ export class EventArchiveService {
       .sort((a, b) => a.id.localeCompare(b.id));
     const payload: EventArchive['payload'] = {
       event: Object.fromEntries(
-        EVENT_FIELDS.map((field) => [field, jsonRow(event)[field]]),
+        [...EVENT_FIELDS, 'embedAllowedOrigins'].map((field) => [
+          field,
+          jsonRow(event)[field],
+        ]),
       ),
       users,
       entities,
@@ -461,6 +464,7 @@ export class EventArchiveService {
         status: 'DRAFT',
         visibility: 'PRIVATE',
         galleryVisibility: 'HIDDEN',
+        embedAllowedOrigins: sourceEvent.embedAllowedOrigins ?? [],
       }) as Prisma.EventUncheckedCreateInput,
     });
     await tx.eventMembership.create({

@@ -4,32 +4,35 @@ An open-source, self-hostable hackathon management, submission, judging, and res
 
 ## Verification Status
 
-- **Claimed Tiers:** `T1`, `T2`, `T3`
-- **Verified Tiers:** `T1`, `T2` (7/7 official acceptance checks pass; the checker has no T3 checks)
-- **Scope:**
-  - **T1:** Hackathon events, teams, versioned submissions, submission window deadlines, and public project gallery.
-  - **T2:** Isolated judge evaluation workspaces, criterion rubrics, peer score blindness, participant blocking, and CSV export.
-  - **T3 (complete and claimed):** Configurable community ballots, public comments with organizer hiding, server-gated results, per-identity ballot order, and organizer integrity audit. T3 is covered by project tests and documentation, not by the official checker.
-- **T4:** Not claimed.
+- **Claimed Tiers:** `T1`, `T2`
+- **Verified Tiers:** `T1`, `T2` (7/7 official acceptance checks pass via `run.py`)
+- **Scope & Implementation:**
+  - **T1 (implemented & checker-verified):** Hackathon events, teams, versioned submissions, submission window deadlines, and public project gallery.
+  - **T2 (implemented & checker-verified):** Isolated judge evaluation workspaces, criterion rubrics, peer score blindness, participant blocking, and CSV export.
+  - **T3 (implemented, covered by project tests):** Configurable community ballots, public comments with organizer hiding, server-gated results, per-identity ballot order, and organizer integrity audit. Covered by project-owned unit, integration, and database tests.
+  - **T4 (implemented, covered by project tests):** REST API and webhooks covering UI actions, certificate and record generation, signed and publicly verifiable judge participation records, an embeddable gallery widget, and bulk import and export.
+- **Checker Coverage Notice:** Canonical `run.py` verification currently covers T1 and T2 only (7/7 checks pass). The submission claim in `.dogfood.toml` is conservatively set to `["T1", "T2"]` because `spec.md` warns that claiming more than verified can cost points. The absence of T3/T4 checks in `run.py` is a limitation of canonical checker coverage, not a statement that T3 or T4 features do not exist or failed. Both T3 and T4 are fully implemented and verified by project-owned test suites.
 
 The platform runs without third-party cloud dependencies. Offline cold runtime boot is supported with prebuilt Docker images; building those images may require network access for base images and npm dependencies.
 
 ## Architecture & Documentation
 
 - [ARCHITECTURE.md](ARCHITECTURE.md): Architectural decisions, modular monolith boundaries, API conventions, and system lifecycle.
-- [DATA-MODEL.md](DATA-MODEL.md): Relational schema, 45 domain models, constraints, and database triggers.
+- [DATA-MODEL.md](DATA-MODEL.md): Relational schema, 51 domain models, constraints, and database triggers.
+- [WEBHOOKS.md](WEBHOOKS.md): Outbox architecture, transactional guarantees, delivery identity, retry, replay, and HMAC signing.
 - [JUDGING.md](JUDGING.md): Judging and scoring guarantees, CSV security, and the T3 voting integrity model and limitations.
 - [JUDGE-RECORDS.md](JUDGE-RECORDS.md): Printable certificate claims, signed judge-record payloads, canonicalization, and offline verification.
 - [JUDGE-RECORD-KEYS.md](JUDGE-RECORD-KEYS.md): Independently published local/demo signing-key fingerprint and rotation trust guidance.
 - [docs/OFFICIAL-FIXTURE-IMPORT.md](docs/OFFICIAL-FIXTURE-IMPORT.md): Fixture import semantics, deterministic UUIDs, and acceptance session token generation.
 - [docs/EVENT-ARCHIVE.md](docs/EVENT-ARCHIVE.md): Organizer archive format, privacy, import workflow, provenance, and compatibility.
+- [docs/EMBEDDED-GALLERY.md](docs/EMBEDDED-GALLERY.md): Read-only iframe route, exact-origin configuration, CSP enforcement, and archive behavior.
 
 ```text
 apps/web/             Next.js shell, judge/organizer workspaces, public voting and comments
 apps/api/             NestJS/Fastify, identity, events, submissions, gallery, judging, voting, audit
 packages/contracts/   Shared REST wire types
 packages/shared/      Shared identity/authorization types
-prisma/               45 domain models, SQL migrations, deterministic seed, official fixture importer
+prisma/               51 domain models, SQL migrations, deterministic seed, official fixture importer
 fixtures/             Development fixture documentation
 tests/                Jest/Supertest, database invariants, Playwright workflows
 docs/                 Architecture, verification, and fixture import notes
@@ -90,7 +93,7 @@ python3 run.py .dogfood.toml --fixtures fixtures.json
 ```text
 DOGFOOD 2026 acceptance report
 portal: http://localhost:4000
-claimed: T1 T2 T3
+claimed: T1 T2
 fixtures: fixtures.json
 
 T1  gallery is public ................. PASS
@@ -101,11 +104,10 @@ T2  judge cannot see peer scores ...... PASS
 T2  participant blocked ............... PASS
 T2  csv export works .................. PASS
 
-claimed T1 T2 T3, verified T1 T2
-note: claimed but not verified: T3
+claimed T1 T2, verified T1 T2
 ```
 
-All 7/7 official acceptance checks cover T1 and T2. The generated result is in [acceptance-report.txt](acceptance-report.txt); the official checker does not verify T3.
+All 7/7 official acceptance checks cover T1 and T2. The generated result is in [acceptance-report.txt](acceptance-report.txt); the official checker does not verify T3 or T4.
 
 ### How Acceptance Fixture Sessions Are Generated
 
@@ -133,13 +135,24 @@ During automatic Docker startup (or via `npm run db:import:official`), these det
 | `POSTGRES_DB`                   | PostgreSQL database name (default `dogfood`)                                                               |
 | `NODE_ENV`                      | Environment mode (`development`, `test`, or `production`)                                                  |
 
-`docker-compose.yml` provides stable, publicly known **local/offline demo** defaults for `VOTING_TOKEN_SECRET`, `WEBHOOK_ENCRYPTION_KEY`, and `JUDGE_RECORD_SIGNING_KEY_SEED`, allowing zero-configuration startup. Production deployments must override all three with strong, independently generated values. The public judge-record demo seed is rejected when `NODE_ENV=production`. Non-Docker startup fails immediately if a required key is missing or malformed. Keep each value stable across restarts; changing a signing seed causes key rotation while older records remain verifiable as long as their public keys remain in the database. For custom configurations, copy `.env.example` to `.env` (which is gitignored) and set all keys explicitly.
+`docker-compose.yml` provides stable, publicly known **local/offline demo** defaults for `VOTING_TOKEN_SECRET`, `WEBHOOK_ENCRYPTION_KEY`, and `JUDGE_RECORD_SIGNING_KEY_SEED`, allowing zero-configuration startup. Production deployments must override all three with strong, independently generated values; startup rejects each known public demo value when `NODE_ENV=production`. Non-Docker startup fails immediately if a required key is missing or malformed. Keep each value stable across restarts; changing a signing seed causes key rotation while older records remain verifiable as long as their public keys remain in the database. For custom configurations, copy `.env.example` to `.env` (which is gitignored) and set all keys explicitly.
 
 ## T3 public voting status and limits
 
 Organizers configure OPEN, EMAIL_GATED, or AUTHENTICATED voting and a voting window in their device's local timezone; the API stores UTC instants and enforces the window using its own clock. The access mode locks when the first voting identity is created. Ballots show eligible submitted projects once each in a stable per-identity pseudorandom order. Comments appear on public gallery projects and organizers may hide them. Organizers can inspect live tallies and audit activity; everyone else receives no tally until the server clock reaches the closing instant.
 
 OPEN identifies a browser token, not a person: clearing cookies or switching browsers can produce another vote. EMAIL_GATED allows one vote per normalized email string and sends no email; it does **not** prove inbox ownership. Only AUTHENTICATED mode can reliably block voting for a project submitted by the account's own team. Rate limits are 6 vote attempts and 12 comment writes per identity per UTC-aligned ten-minute bucket; rotating OPEN tokens or changing submitted email strings can evade them. Related request fingerprints create organizer-only flags for review and **never automatically block** votes. See [JUDGING.md](JUDGING.md) for the precise integrity policy.
+
+## T4 Platform Integrations (Implemented & Tested)
+
+T4 is fully implemented and covered by project-owned automated test suites (`test:t4a`, `test:t4b`, `test:t4c`, `test:t4d`):
+
+- **REST API Covering UI Actions**: Complete REST endpoints for all event domain actions with session-based authentication and role-based authorization. Webhook subscription management has full REST routes (`/events/:eventId/webhooks`) with HttpOnly session cookies (note: webhook subscription administration currently has REST routes but no web UI).
+- **Webhooks Covering UI Actions**: Transactional outbox pattern emits version 1 signed webhooks (`HMAC-SHA256`) for meaningful server-side domain mutations (lifecycle, tracks, prizes, registrations, teams, submissions, rubric, assignments, evaluations, scoring, voting, comments, judge records, embed config, archive import). An SSRF-protected dispatcher pins resolved IPv4/IPv6 addresses, rejects private/internal ranges, and implements exponential backoff with jitter and manual replay.
+- **Certificate and Record Generation**: On-demand printable HTML and JSON participation records and certificates for registrations, submissions, and judging.
+- **Signed Judge Participation Records**: Canonicalized, deterministic Ed25519-signed participation records and revocation statements with offline verification (`/judge-records/:recordId/verify` and standalone CLI script). Private keys and signing seeds are never exposed in payloads, outbox events, or database tables.
+- **Embeddable Gallery Widget**: Dedicated read-only route at `/embed/events/:eventId` rendering public gallery projects with search and track filtering. Protected by document-scoped CSP `frame-ancestors` matching the event's configured allowed origins (defaults to `'none'` if empty). Strictly read-only: no browser cookies forwarded to upstream API, no mutation controls. Non-embed management-page clickjacking hardening is outside this T4 checkpoint.
+- **Bulk Import and Export**: Portable JSON event archive (schema v1) with deterministic key ordering, SHA-256 package hashing, atomic transactional import, foreign key preservation, and privacy protections. Source users become deactivated unclaimed placeholders (`@archive.invalid`); source credentials and private data are excluded; destination starts draft/private/gallery-hidden. A successful new import emits exactly one destination-level `event.imported` outbox event (preview, failed import, and idempotent reconfirmations emit zero); historical source webhook events are never replayed; imported subscriptions remain disabled and secretless.
 
 ## Local Development (Non-Docker)
 

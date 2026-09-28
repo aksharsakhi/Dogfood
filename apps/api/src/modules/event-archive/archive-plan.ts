@@ -1,6 +1,7 @@
 import { createHash, createPublicKey } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import { verifyCanonicalPayload } from '../judge-records/judge-records.crypto';
+import { canonicalEmbedOrigins } from '../events/embed-origins';
 import { fail } from '../../common/errors/domain-error';
 import {
   type ArchiveModel,
@@ -170,6 +171,15 @@ export function planArchive(input: unknown): ArchivePlan {
   const ids: IdPlan = { Event: {}, User: {}, CommentAuthor: {} };
   const event = archive.payload.event;
   validRowScalars('Event', event);
+  if (event.embedAllowedOrigins !== undefined) {
+    const canonical = canonicalEmbedOrigins(event.embedAllowedOrigins);
+    if (JSON.stringify(canonical) !== JSON.stringify(event.embedAllowedOrigins))
+      fail(
+        400,
+        'ARCHIVE_INVALID',
+        'Embed origins must be canonical and unique.',
+      );
+  }
   ids.Event![archive.source.eventId] = deterministicId(
     archive.packageHash,
     'Event',

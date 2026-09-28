@@ -108,6 +108,11 @@ export class GalleryController {
   constructor(
     @Inject(ProjectsService) private readonly projects: ProjectsService,
   ) {}
+  @Get('embed-meta') embedMeta(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+  ) {
+    return this.projects.galleryEmbedMeta(eventId);
+  }
   @Get() list(
     @Param('eventId', ParseUUIDPipe) eventId: string,
     @Query() query: GalleryQueryDto,

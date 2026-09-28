@@ -161,10 +161,61 @@ describe('T4A REST mutation coverage and durable webhooks', () => {
       'COMMUNITY_VOTE_FLAGGED',
       'PROJECT_COMMENT_POSTED',
       'PROJECT_COMMENT_HIDDEN',
+      'EVENT_EMBED_CONFIG_CHANGED',
+      'JUDGE_PARTICIPATION_RECORD_ISSUED',
+      'JUDGE_PARTICIPATION_RECORD_REVOKED',
+      'EVENT_IMPORTED',
     ];
     for (const action of expected) expect(webhookTypes[action]).toBeTruthy();
     expect(webhookTypes.AUTH_REGISTER).toBeUndefined();
     expect(webhookTypes.CSV_EXPORTED).toBeUndefined();
+  });
+
+  it('accepts new event types without changing existing subscription selections', async () => {
+    const organizer = await actor('new-types-owner');
+    const eventId = await eventFixture(organizer);
+    const old = await post(
+      `/events/${eventId}/webhooks`,
+      { url: 'https://8.8.8.8/hooks', eventTypes: ['event.updated'] },
+      organizer.cookie,
+    ).expect(201);
+    const selected = [
+      'event.embed.config.changed',
+      'judge.participation.record.issued',
+      'judge.participation.record.revoked',
+      'event.imported',
+    ];
+    const fresh = await post(
+      `/events/${eventId}/webhooks`,
+      { url: 'https://8.8.8.8/hooks', eventTypes: selected },
+      organizer.cookie,
+    ).expect(201);
+    expect(fresh.body.eventTypes).toEqual(selected);
+    await patch(
+      `/events/${eventId}/embed-config`,
+      { allowedOrigins: ['https://example.com'] },
+      organizer.cookie,
+    ).expect(200);
+    const event = await db.webhookOutboxEvent.findFirstOrThrow({
+      where: { eventId, eventType: 'event.embed.config.changed' },
+    });
+    expect(
+      await db.webhookDelivery.count({
+        where: { outboxEventId: event.id, subscriptionId: fresh.body.id },
+      }),
+    ).toBe(1);
+    expect(
+      await db.webhookDelivery.count({
+        where: { outboxEventId: event.id, subscriptionId: old.body.id },
+      }),
+    ).toBe(0);
+    expect(
+      (
+        await db.webhookSubscription.findUniqueOrThrow({
+          where: { id: old.body.id },
+        })
+      ).eventTypes,
+    ).toEqual(['event.updated']);
   });
 
   it('commits event creation and its outbox event atomically', async () => {

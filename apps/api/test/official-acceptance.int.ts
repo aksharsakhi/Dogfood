@@ -149,7 +149,7 @@ describe('peer score isolation and checker route behavior', () => {
       return match[1];
     };
     expect(value('base_url')).toBe('http://localhost:4000');
-    expect(config).toMatch(/^claimed\s*=\s*\["T1", "T2", "T3"\]$/m);
+    expect(config).toMatch(/^claimed\s*=\s*\["T1", "T2"\]$/m);
     for (const role of roles) expect(value(role)).toBe(first[role]);
     expect(value('gallery')).toBe(`/events/${eventId}/gallery?pageSize=50`);
     expect(value('submit')).toBe(

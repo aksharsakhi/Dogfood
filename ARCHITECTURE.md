@@ -18,7 +18,7 @@ The web proxy forwards the event-scoped OPEN cookie with a `/api/events/.../voti
 
 ## Relational boundaries
 
-All 45 models are in `prisma/schema.prisma`. UUIDs identify entities; natural join keys identify PlatformRole and JudgeExpertise. Decimal fields store scores, weights and money. Dates use PostgreSQL timestamptz; the event timezone is an IANA name that future event DTOs must validate. JSONB is limited to flexible registration metadata, score-run parameters, audit snapshots, and versioned webhook payloads.
+All 51 models are in `prisma/schema.prisma`. UUIDs identify entities; natural join keys identify PlatformRole and JudgeExpertise. Decimal fields store scores, weights and money. Dates use PostgreSQL timestamptz; the event timezone is an IANA name that future event DTOs must validate. JSONB is limited to flexible registration metadata, score-run parameters, audit snapshots, and versioned webhook payloads.
 
 EventMembership supports multiple event roles. TeamMember carries eventId solely to enforce the partial unique index on `(eventId,userId) WHERE leftAt IS NULL`. Its composite FK guarantees that eventId matches Team. A departed member retains their row; rejoining the same team updates that membership. Full membership interval history belongs in audit events later.
 
@@ -45,6 +45,8 @@ Phase 4B implements the scoring, normalization, competition results, and CSV exp
 - **Database Immutability**: Dedicated PostgreSQL triggers enforce immutability on `ScoreRun`, `JudgeScoreStats`, `NormalizedScore`, `ProjectScore`, `ResultRun`, and `ProjectResult`. Parent-child event matching is enforced by database triggers.
 
 ## API conventions
+
+The T4D embed is a standalone HTML response at `/embed/events/:eventId` with a document-scoped `frame-ancestors` policy. It fetches only the unauthenticated public-gallery API; no browser cookie is forwarded. Organizer configuration is stored per event and audited. See [embedded gallery](docs/EMBEDDED-GALLERY.md).
 
 Success responses are typed resource JSON (no redundant envelope). Errors are `{code,message,details,requestId}`. The global filter sanitizes unexpected errors; request IDs are generated server-side and returned as `x-request-id`. Global DTO validation rejects unknown properties. Browser CORS uses one configured origin with credentials enabled for future sessions. Logging intentionally omits request payloads and tokens.
 

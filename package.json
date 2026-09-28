@@ -37,7 +37,8 @@
     "test:phase4b": "jest --config jest.phase4b.config.cjs --runInBand",
     "test:t4a": "jest --config jest.t4a.config.cjs --runInBand",
     "test:t4b": "jest --config jest.t4b.config.cjs --runInBand",
-    "test:t4c": "jest --config jest.t4c.config.cjs --runInBand"
+    "test:t4c": "jest --config jest.t4c.config.cjs --runInBand",
+    "test:t4d": "jest --config jest.t4d.config.cjs --runInBand"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",

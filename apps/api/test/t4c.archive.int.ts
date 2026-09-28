@@ -259,6 +259,7 @@ describe('T4C organizer import', () => {
   });
   it('previews without event-domain writes and rejects unpreviewed/changed confirmation', async () => {
     const before = await db.event.count();
+    const destinationId = planArchive(archive).ids.Event![sourceEventId]!;
     const preview = await post(
       '/events/archives/preview',
       { archive },
@@ -269,6 +270,11 @@ describe('T4C organizer import', () => {
     expect(preview.body.identityMappings).toHaveLength(1);
     expect(preview.body.privacyConsequences.length).toBeGreaterThan(0);
     expect(await db.event.count()).toBe(before);
+    expect(
+      await db.webhookOutboxEvent.count({
+        where: { eventId: destinationId },
+      }),
+    ).toBe(0);
     expect(
       (
         await post(
@@ -314,6 +320,20 @@ describe('T4C organizer import', () => {
       'HIDDEN',
     ]);
     expect(event.createdById).toBe(outsider.id);
+    const importOutbox = await db.webhookOutboxEvent.findMany({
+      where: { eventId, eventType: 'event.imported' },
+    });
+    expect(importOutbox).toHaveLength(1);
+    expect(importOutbox[0]?.payload).toMatchObject({
+      eventId,
+      eventType: 'event.imported',
+      entity: { type: 'Event', id: eventId },
+    });
+    expect(
+      await db.webhookDelivery.count({
+        where: { outboxEventId: importOutbox[0]!.id },
+      }),
+    ).toBe(0);
     const placeholder = await db.user.findUniqueOrThrow({
       where: { id: planArchive(archive).ids.User![organizer.id]! },
     });
@@ -336,6 +356,11 @@ describe('T4C organizer import', () => {
       outsider.cookie,
     );
     expect(repeat.body).toMatchObject({ status: 'ALREADY_IMPORTED', eventId });
+    expect(
+      await db.webhookOutboxEvent.count({
+        where: { eventId, eventType: 'event.imported' },
+      }),
+    ).toBe(1);
     expect(
       await db.eventArchiveImport.count({
         where: { packageHash: archive.packageHash },
@@ -416,6 +441,11 @@ describe('T4C organizer import', () => {
         where: { destinationId: destEventId },
       }),
     ).toHaveLength(0);
+    expect(
+      await db.webhookOutboxEvent.count({
+        where: { eventId: destEventId, eventType: 'event.imported' },
+      }),
+    ).toBe(0);
   });
 
   it('negative controls: semantic normalizer detects dropped records and changed scalar fields', () => {
@@ -933,6 +963,17 @@ describe('T4C organizer import', () => {
     );
     expect(confirmRes.status).toBe(201);
     const destEventId = confirmRes.body.eventId as string;
+    const destinationOutbox = await db.webhookOutboxEvent.findMany({
+      where: { eventId: destEventId },
+    });
+    expect(destinationOutbox.map((row) => row.eventType)).toEqual([
+      'event.imported',
+    ]);
+    expect(
+      await db.webhookDelivery.count({
+        where: { outboxEventId: destinationOutbox[0]!.id },
+      }),
+    ).toBe(0);
 
     // 4. Export destination and verify semantic normalization equivalence
     const destExportRes = await get(
@@ -1043,6 +1084,47 @@ describe('T4C organizer import', () => {
     expect(semanticNormalize(destArchive, plan.ids)).toBe(
       semanticNormalize(officialArchive),
     );
+    // The only two additional archived rows are the destination organizer's
+    // User and EventMembership. The source organizer is already represented
+    // among the remapped source rows, but cannot authenticate there.
+    expect(destArchive.manifest.totalRows).toBe(
+      officialArchive.manifest.totalRows + 2,
+    );
+    expect(destArchive.payload.users).toHaveLength(
+      officialArchive.payload.users.length + 1,
+    );
+    expect(destArchive.payload.entities.EventMembership).toHaveLength(
+      officialArchive.payload.entities.EventMembership.length + 1,
+    );
+    expect(
+      destArchive.payload.users.filter((row) => row.id === importActor.id),
+    ).toHaveLength(1);
+    expect(
+      destArchive.payload.entities.EventMembership.filter(
+        (row) => row.userId === importActor.id && row.role === 'ORGANIZER',
+      ),
+    ).toHaveLength(1);
+    const sourceOrganizerId = String(officialArchive.payload.event.createdById);
+    const placeholderId = plan.ids.User![sourceOrganizerId]!;
+    expect(placeholderId).not.toBe(importActor.id);
+    expect(
+      destArchive.payload.users.filter((row) => row.id === placeholderId),
+    ).toHaveLength(1);
+    const placeholder = await db.user.findUniqueOrThrow({
+      where: { id: placeholderId },
+    });
+    expect(placeholder).toMatchObject({
+      status: 'DEACTIVATED',
+      importedPlaceholder: true,
+      passwordHash: null,
+      emailVerifiedAt: null,
+    });
+    expect(await db.session.count({ where: { userId: placeholderId } })).toBe(
+      0,
+    );
+    expect(
+      await db.platformRole.count({ where: { userId: placeholderId } }),
+    ).toBe(0);
   });
 
   it('enforces route-scoped body limit: rejects oversized non-archive requests but accepts >1MB archive payloads within 20MB limit', async () => {

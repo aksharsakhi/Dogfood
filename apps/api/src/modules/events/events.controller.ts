@@ -20,6 +20,7 @@ import { CurrentPrincipal } from '../../common/auth/current-principal';
 import { AuthService } from '../identity/auth.service';
 import {
   CreateEventDto,
+  EmbedOriginsDto,
   PrizeDto,
   TrackDto,
   UpdateEventDto,
@@ -34,6 +35,25 @@ export class EventsController {
     @Inject(EventsService) private readonly events: EventsService,
     @Inject(AuthService) private readonly auth: AuthService,
   ) {}
+  @Get(':eventId/embed-config')
+  @UseGuards(SessionAuthGuard)
+  @ApiCookieAuth()
+  embedConfig(
+    @CurrentPrincipal() p: SessionPrincipal,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+  ) {
+    return this.events.embedConfig(p, eventId);
+  }
+  @Patch(':eventId/embed-config')
+  @UseGuards(SessionAuthGuard)
+  @ApiCookieAuth()
+  updateEmbedConfig(
+    @CurrentPrincipal() p: SessionPrincipal,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Body() dto: EmbedOriginsDto,
+  ) {
+    return this.events.updateEmbedConfig(p, eventId, dto.allowedOrigins);
+  }
   @Get() async list(@Req() request: FastifyRequest) {
     return this.events.list(await this.auth.resolve(request));
   }

@@ -255,6 +255,7 @@ model Event {
   maxTeamSize               Int                        @default(5)
   visibility                EventVisibility            @default(PRIVATE)
   galleryVisibility         GalleryVisibility          @default(HIDDEN)
+  embedAllowedOrigins       String[]                   @default([])
   status                    EventStatus                @default(DRAFT)
   createdById               String                     @db.Uuid
   createdAt                 DateTime                   @default(now()) @db.Timestamptz(6)

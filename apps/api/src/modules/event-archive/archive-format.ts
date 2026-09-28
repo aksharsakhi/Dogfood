@@ -35,6 +35,7 @@ export const EVENT_FIELDS = [
   'createdById',
   'createdAt',
 ] as const;
+export const EVENT_OPTIONAL_FIELDS = ['embedAllowedOrigins'] as const;
 
 export const MODEL_FIELDS = {
   EventMembership: ['id', 'eventId', 'userId', 'role', 'status', 'createdAt'],
@@ -417,6 +418,7 @@ function exactKeys(
   value: unknown,
   allowed: readonly string[],
   label: string,
+  optional: readonly string[] = [],
 ): asserts value is Record<string, unknown> {
   if (!object(value))
     fail(400, 'ARCHIVE_INVALID', `${label} must be an object.`);
@@ -424,7 +426,7 @@ function exactKeys(
     if (!allowed.includes(key))
       fail(400, 'ARCHIVE_UNKNOWN_FIELD', `Unsupported ${label} field: ${key}.`);
   for (const key of allowed)
-    if (!(key in value))
+    if (!(key in value) && !optional.includes(key))
       fail(400, 'ARCHIVE_INVALID', `Missing ${label} field: ${key}.`);
 }
 
@@ -475,7 +477,12 @@ export function parseArchive(input: unknown): EventArchive {
     ['event', 'users', 'entities', 'voteAggregates', 'comments'],
     'payload',
   );
-  exactKeys(value.payload.event, EVENT_FIELDS, 'event');
+  exactKeys(
+    value.payload.event,
+    [...EVENT_FIELDS, ...EVENT_OPTIONAL_FIELDS],
+    'event',
+    EVENT_OPTIONAL_FIELDS,
+  );
   if (value.payload.event.id !== value.source.eventId)
     fail(400, 'ARCHIVE_INVALID', 'Source event identifier mismatch.');
   if (

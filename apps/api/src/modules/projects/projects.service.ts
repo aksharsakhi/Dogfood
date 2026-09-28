@@ -5,6 +5,7 @@ import { DatabaseService } from '../../infrastructure/database/database.service'
 import { Clock } from '../../common/time';
 import { fail } from '../../common/errors/domain-error';
 import { AuditService } from '../audit/audit.service';
+import { canonicalEmbedOrigins } from '../events/embed-origins';
 import {
   CreateProjectDto,
   DraftDto,
@@ -531,7 +532,13 @@ export class ProjectsService {
         visibility: { in: ['PUBLIC', 'UNLISTED'] },
         status: { in: ['PUBLISHED', 'ACTIVE', 'COMPLETED', 'ARCHIVED'] },
       },
-      select: { id: true, galleryVisibility: true, submissionClosesAt: true },
+      select: {
+        id: true,
+        name: true,
+        embedAllowedOrigins: true,
+        galleryVisibility: true,
+        submissionClosesAt: true,
+      },
     });
     if (!event) fail(404, 'EVENT_NOT_FOUND', 'Event was not found.');
     if (
@@ -541,6 +548,14 @@ export class ProjectsService {
           this.clock.now() < event.submissionClosesAt))
     )
       fail(404, 'GALLERY_HIDDEN', 'Project gallery is currently hidden.');
+    return event;
+  }
+  async galleryEmbedMeta(eventId: string) {
+    const event = await this.publicEvent(eventId);
+    return {
+      name: event.name,
+      allowedOrigins: canonicalEmbedOrigins(event.embedAllowedOrigins),
+    };
   }
   private galleryWhere(eventId: string, query: GalleryQueryDto) {
     const search = query.search?.trim();
