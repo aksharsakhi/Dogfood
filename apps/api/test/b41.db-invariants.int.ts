@@ -20,6 +20,7 @@ describe('Phase B4.1 — Database Invariants Proof', () => {
   let project1BId: string;
   let project1CId: string;
   let project2AId: string;
+  let project2ASubmissionId: string;
   let pairwiseRun1Id: string;
 
   beforeAll(async () => {
@@ -109,6 +110,7 @@ describe('Phase B4.1 — Database Invariants Proof', () => {
         teamId: team1A.id,
         name: 'Project 1A',
         slug: `proj-1a-${randomUUID().slice(0, 8)}`,
+        status: 'ACTIVE',
       },
     });
     project1AId = p1A.id;
@@ -127,6 +129,7 @@ describe('Phase B4.1 — Database Invariants Proof', () => {
         teamId: team1B.id,
         name: 'Project 1B',
         slug: `proj-1b-${randomUUID().slice(0, 8)}`,
+        status: 'ACTIVE',
       },
     });
     project1BId = p1B.id;
@@ -145,6 +148,7 @@ describe('Phase B4.1 — Database Invariants Proof', () => {
         teamId: team1C.id,
         name: 'Project 1C',
         slug: `proj-1c-${randomUUID().slice(0, 8)}`,
+        status: 'ACTIVE',
       },
     });
     project1CId = p1C.id;
@@ -164,9 +168,24 @@ describe('Phase B4.1 — Database Invariants Proof', () => {
         teamId: team2A.id,
         name: 'Project 2A',
         slug: `proj-2a-${randomUUID().slice(0, 8)}`,
+        status: 'ACTIVE',
       },
     });
     project2AId = p2A.id;
+
+    const project2Submission = await db.submission.create({
+      data: {
+        projectId: project2AId,
+        version: 1,
+        title: 'Event 2 frozen title',
+        description: 'Event 2 frozen description',
+        projectName: 'Project 2A',
+        createdById: organizerUserId,
+        status: 'SUBMITTED',
+        submittedAt: new Date(),
+      },
+    });
+    project2ASubmissionId = project2Submission.id;
 
     // 7. Create PairwiseRun for Event 1
     const run = await db.pairwiseRun.create({
@@ -179,6 +198,27 @@ describe('Phase B4.1 — Database Invariants Proof', () => {
       },
     });
     pairwiseRun1Id = run.id;
+    // B4.1.1: valid assignment fixtures now require pinned final submissions.
+    for (const projectId of [project1AId, project1BId, project1CId]) {
+      await db.submission.create({
+        data: {
+          projectId,
+          version: 1,
+          title: 'Frozen title',
+          description: 'Frozen description',
+          projectName:
+            projectId === project1AId
+              ? 'Project 1A'
+              : projectId === project1BId
+                ? 'Project 1B'
+                : 'Project 1C',
+          createdById: organizerUserId,
+          status: 'SUBMITTED',
+          submittedAt: new Date(),
+        },
+      });
+    }
+    await pinRun(run.id);
   });
 
   afterAll(async () => {
@@ -212,10 +252,244 @@ describe('Phase B4.1 — Database Invariants Proof', () => {
     await db.$disconnect();
   });
 
+  async function pinRun(pairwiseRunId: string) {
+    for (const projectId of [project1AId, project1BId, project1CId]) {
+      const submission = await db.submission.findFirstOrThrow({
+        where: { projectId },
+        orderBy: { version: 'desc' },
+      });
+      await db.pairwiseRunProjectSnapshot.create({
+        data: { pairwiseRunId, projectId, submissionId: submission.id },
+      });
+    }
+  }
+
   // Helper to ensure canonical order in tests
   function canonicalPair(idA: string, idB: string): [string, string] {
     return idA < idB ? [idA, idB] : [idB, idA];
   }
+
+  // =========================================================================
+  // B4.1.1 — IMMUTABLE RUN-LEVEL SUBMISSION SNAPSHOTS
+  // =========================================================================
+  it('accepts a valid run/project/submission snapshot', async () => {
+    const snapshot = await db.pairwiseRunProjectSnapshot.findUnique({
+      where: {
+        pairwiseRunId_projectId: {
+          pairwiseRunId: pairwiseRun1Id,
+          projectId: project1AId,
+        },
+      },
+      include: { submission: true },
+    });
+    expect(snapshot).not.toBeNull();
+    expect(snapshot?.submission.projectId).toBe(project1AId);
+    expect(['SUBMITTED', 'LOCKED']).toContain(snapshot?.submission.status);
+  });
+
+  it('keeps the pinned submission when a later submission is created', async () => {
+    const before = await db.pairwiseRunProjectSnapshot.findUniqueOrThrow({
+      where: {
+        pairwiseRunId_projectId: {
+          pairwiseRunId: pairwiseRun1Id,
+          projectId: project1AId,
+        },
+      },
+    });
+    await db.pairwiseRun.update({
+      where: { id: pairwiseRun1Id },
+      data: { status: 'PUBLISHED', publishedAt: new Date() },
+    });
+    const later = await db.submission.create({
+      data: {
+        projectId: project1AId,
+        version: 2,
+        title: 'Later final title',
+        description: 'Later final description',
+        projectName: 'Project 1A',
+        createdById: organizerUserId,
+        status: 'SUBMITTED',
+        submittedAt: new Date(),
+      },
+    });
+
+    const after = await db.pairwiseRunProjectSnapshot.findUniqueOrThrow({
+      where: {
+        pairwiseRunId_projectId: {
+          pairwiseRunId: pairwiseRun1Id,
+          projectId: project1AId,
+        },
+      },
+    });
+    expect(after.submissionId).toBe(before.submissionId);
+    expect(after.submissionId).not.toBe(later.id);
+  });
+
+  it('rejects project from the wrong event', async () => {
+    const run = await db.pairwiseRun.create({
+      data: { eventId: event1Id, createdById: organizerUserId },
+    });
+    await expect(
+      db.pairwiseRunProjectSnapshot.create({
+        data: {
+          pairwiseRunId: run.id,
+          projectId: project2AId,
+          submissionId: project2ASubmissionId,
+        },
+      }),
+    ).rejects.toThrow('Pairwise snapshot project must belong to run event');
+  });
+
+  it('rejects a submission belonging to a different project', async () => {
+    const run = await db.pairwiseRun.create({
+      data: { eventId: event1Id, createdById: organizerUserId },
+    });
+    const otherSubmission = await db.submission.findFirstOrThrow({
+      where: { projectId: project1BId },
+    });
+    await expect(
+      db.pairwiseRunProjectSnapshot.create({
+        data: {
+          pairwiseRunId: run.id,
+          projectId: project1AId,
+          submissionId: otherSubmission.id,
+        },
+      }),
+    ).rejects.toThrow('Pairwise snapshot submission must belong to project');
+  });
+
+  it('rejects duplicate run/project mappings', async () => {
+    const run = await db.pairwiseRun.create({
+      data: { eventId: event1Id, createdById: organizerUserId },
+    });
+    const submission = await db.submission.findFirstOrThrow({
+      where: { projectId: project1BId },
+    });
+    const data = {
+      pairwiseRunId: run.id,
+      projectId: project1BId,
+      submissionId: submission.id,
+    };
+    await db.pairwiseRunProjectSnapshot.create({ data });
+    await expect(
+      db.pairwiseRunProjectSnapshot.create({ data }),
+    ).rejects.toMatchObject({ code: 'P2002' });
+  });
+
+  it('rejects snapshot update and deletion after an assignment exists', async () => {
+    const run = await db.pairwiseRun.create({
+      data: { eventId: event1Id, createdById: organizerUserId },
+    });
+    await pinRun(run.id);
+    const snapshot = await db.pairwiseRunProjectSnapshot.findUniqueOrThrow({
+      where: {
+        pairwiseRunId_projectId: {
+          pairwiseRunId: run.id,
+          projectId: project1AId,
+        },
+      },
+    });
+    const replacement = await db.submission.create({
+      data: {
+        projectId: project1AId,
+        version: 3,
+        title: 'Replacement final title',
+        description: 'Replacement final description',
+        projectName: 'Project 1A',
+        createdById: organizerUserId,
+        status: 'SUBMITTED',
+        submittedAt: new Date(),
+      },
+    });
+    const [projectAId, projectBId] = canonicalPair(project1AId, project1BId);
+    await db.pairwiseAssignment.create({
+      data: {
+        runId: run.id,
+        judgeProfileId: judge1ProfileId,
+        projectAId,
+        projectBId,
+      },
+    });
+
+    await expect(
+      db.pairwiseRunProjectSnapshot.update({
+        where: { id: snapshot.id },
+        data: { submissionId: replacement.id },
+      }),
+    ).rejects.toThrow('Pairwise project snapshots are frozen');
+    await expect(
+      db.pairwiseRunProjectSnapshot.delete({ where: { id: snapshot.id } }),
+    ).rejects.toThrow('Pairwise project snapshots are frozen');
+  });
+
+  it('rejects inserting a snapshot after the run is published', async () => {
+    const run = await db.pairwiseRun.create({
+      data: {
+        eventId: event1Id,
+        createdById: organizerUserId,
+        status: 'PUBLISHED',
+      },
+    });
+    const submission = await db.submission.findFirstOrThrow({
+      where: { projectId: project1BId },
+    });
+    await expect(
+      db.pairwiseRunProjectSnapshot.create({
+        data: {
+          pairwiseRunId: run.id,
+          projectId: project1BId,
+          submissionId: submission.id,
+        },
+      }),
+    ).rejects.toThrow('Pairwise project snapshots are frozen');
+  });
+
+  it('rejects an assignment when either project is unpinned', async () => {
+    const run = await db.pairwiseRun.create({
+      data: { eventId: event1Id, createdById: organizerUserId },
+    });
+    const submission = await db.submission.findFirstOrThrow({
+      where: { projectId: project1AId },
+      orderBy: { version: 'desc' },
+    });
+    await db.pairwiseRunProjectSnapshot.create({
+      data: {
+        pairwiseRunId: run.id,
+        projectId: project1AId,
+        submissionId: submission.id,
+      },
+    });
+    const [projectAId, projectBId] = canonicalPair(project1AId, project1BId);
+    await expect(
+      db.pairwiseAssignment.create({
+        data: {
+          runId: run.id,
+          judgeProfileId: judge1ProfileId,
+          projectAId,
+          projectBId,
+        },
+      }),
+    ).rejects.toThrow(
+      'Pairwise assignment requires both run project snapshots',
+    );
+  });
+
+  it('accepts an assignment when both projects are pinned', async () => {
+    const run = await db.pairwiseRun.create({
+      data: { eventId: event1Id, createdById: organizerUserId },
+    });
+    await pinRun(run.id);
+    const [projectAId, projectBId] = canonicalPair(project1AId, project1BId);
+    const assignment = await db.pairwiseAssignment.create({
+      data: {
+        runId: run.id,
+        judgeProfileId: judge1ProfileId,
+        projectAId,
+        projectBId,
+      },
+    });
+    expect(assignment.id).toBeDefined();
+  });
 
   // =========================================================================
   // 1. NO SELF PAIRS: projectAId != projectBId
@@ -624,6 +898,7 @@ describe('Phase B4.1 — Database Invariants Proof', () => {
         createdById: organizerUserId,
       },
     });
+    await pinRun(testRun.id);
     const [pA, pB] = canonicalPair(project1AId, project1BId);
     await db.pairwiseAssignment.create({
       data: {
@@ -652,6 +927,7 @@ describe('Phase B4.1 — Database Invariants Proof', () => {
         createdById: organizerUserId,
       },
     });
+    await pinRun(testRun.id);
     const [pA, pB] = canonicalPair(project1AId, project1BId);
     await expect(
       db.pairwiseAssignment.create({
@@ -673,6 +949,7 @@ describe('Phase B4.1 — Database Invariants Proof', () => {
         createdById: organizerUserId,
       },
     });
+    await pinRun(testRun.id);
     const [pA, pB] = canonicalPair(project1AId, project1BId);
     const assignment = await db.pairwiseAssignment.create({
       data: {
@@ -699,6 +976,7 @@ describe('Phase B4.1 — Database Invariants Proof', () => {
         createdById: organizerUserId,
       },
     });
+    await pinRun(testRun.id);
     const [pA, pB] = canonicalPair(project1AId, project1BId);
     const assignment = await db.pairwiseAssignment.create({
       data: {

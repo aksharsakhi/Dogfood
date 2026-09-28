@@ -184,40 +184,40 @@ enum PairwiseAssignmentStatus {
 }
 
 model User {
-  id                          String                @id @default(uuid()) @db.Uuid
-  email                       String                @unique @db.VarChar(320)
+  id                          String                   @id @default(uuid()) @db.Uuid
+  email                       String                   @unique @db.VarChar(320)
   passwordHash                String?
-  importedPlaceholder         Boolean               @default(false)
+  importedPlaceholder         Boolean                  @default(false)
   displayName                 String
-  emailVerifiedAt             DateTime?             @db.Timestamptz(6)
-  status                      UserStatus            @default(ACTIVE)
-  createdAt                   DateTime              @default(now()) @db.Timestamptz(6)
-  updatedAt                   DateTime              @updatedAt @db.Timestamptz(6)
-  sessions                    Session[]             @relation("Session_userId")
-  platformRoles               PlatformRole[]        @relation("PlatformRole_userId")
-  createdEvents               Event[]               @relation("Event_createdById")
-  memberships                 EventMembership[]     @relation("EventMembership_userId")
-  registrations               Registration[]        @relation("Registration_userId")
-  createdTeams                Team[]                @relation("Team_createdById")
-  members                     TeamMember[]          @relation("TeamMember_userId")
-  receivedInvitations         TeamInvitation[]      @relation("TeamInvitation_invitedUserId")
-  createdTeamInvitations      TeamInvitation[]      @relation("TeamInvitation_createdById")
-  receivedJudgeInvites        JudgeInvitation[]     @relation("JudgeInvitation_invitedUserId")
-  createdJudgeInvites         JudgeInvitation[]     @relation("JudgeInvitation_createdById")
-  createdSubmissions          Submission[]          @relation("Submission_createdById")
-  assignedEvaluations         JudgeAssignment[]     @relation("JudgeAssignment_assignedById")
-  createdAssignmentRuns       AssignmentRun[]       @relation("AssignmentRun_createdById")
-  createdScoreRuns            ScoreRun[]            @relation("ScoreRun_createdById")
-  createdResultRuns           ResultRun[]           @relation("ResultRun_createdById")
-  resultRunOverrides          ResultRun[]           @relation("ResultRun_overrideActorId")
-  auditEvents                 AuditEvent[]          @relation("AuditEvent_actorUserId")
-  votingIdentities            VotingIdentity[]      @relation("VotingIdentity_userId")
-  moderatedComments           ProjectComment[]      @relation("ProjectComment_hiddenById")
-  createdWebhookSubscriptions WebhookSubscription[] @relation("WebhookSubscription_createdById")
-  archiveImports              EventArchiveImport[]  @relation("EventArchiveImport_importedById")
-  archivePreviews             EventArchivePreview[] @relation("EventArchivePreview_actorUserId")
+  emailVerifiedAt             DateTime?                @db.Timestamptz(6)
+  status                      UserStatus               @default(ACTIVE)
+  createdAt                   DateTime                 @default(now()) @db.Timestamptz(6)
+  updatedAt                   DateTime                 @updatedAt @db.Timestamptz(6)
+  sessions                    Session[]                @relation("Session_userId")
+  platformRoles               PlatformRole[]           @relation("PlatformRole_userId")
+  createdEvents               Event[]                  @relation("Event_createdById")
+  memberships                 EventMembership[]        @relation("EventMembership_userId")
+  registrations               Registration[]           @relation("Registration_userId")
+  createdTeams                Team[]                   @relation("Team_createdById")
+  members                     TeamMember[]             @relation("TeamMember_userId")
+  receivedInvitations         TeamInvitation[]         @relation("TeamInvitation_invitedUserId")
+  createdTeamInvitations      TeamInvitation[]         @relation("TeamInvitation_createdById")
+  receivedJudgeInvites        JudgeInvitation[]        @relation("JudgeInvitation_invitedUserId")
+  createdJudgeInvites         JudgeInvitation[]        @relation("JudgeInvitation_createdById")
+  createdSubmissions          Submission[]             @relation("Submission_createdById")
+  assignedEvaluations         JudgeAssignment[]        @relation("JudgeAssignment_assignedById")
+  createdAssignmentRuns       AssignmentRun[]          @relation("AssignmentRun_createdById")
+  createdScoreRuns            ScoreRun[]               @relation("ScoreRun_createdById")
+  createdResultRuns           ResultRun[]              @relation("ResultRun_createdById")
+  resultRunOverrides          ResultRun[]              @relation("ResultRun_overrideActorId")
+  auditEvents                 AuditEvent[]             @relation("AuditEvent_actorUserId")
+  votingIdentities            VotingIdentity[]         @relation("VotingIdentity_userId")
+  moderatedComments           ProjectComment[]         @relation("ProjectComment_hiddenById")
+  createdWebhookSubscriptions WebhookSubscription[]    @relation("WebhookSubscription_createdById")
+  archiveImports              EventArchiveImport[]     @relation("EventArchiveImport_importedById")
+  archivePreviews             EventArchivePreview[]    @relation("EventArchivePreview_actorUserId")
   importedComments            ImportedProjectComment[] @relation("ImportedProjectComment_authorUserId")
-  createdPairwiseRuns         PairwiseRun[]         @relation("PairwiseRun_createdById")
+  createdPairwiseRuns         PairwiseRun[]            @relation("PairwiseRun_createdById")
 }
 
 model Session {
@@ -451,36 +451,37 @@ model JudgeInvitation {
 }
 
 model Project {
-  id               String            @id @default(uuid()) @db.Uuid
-  eventId          String            @db.Uuid
-  teamId           String            @db.Uuid
-  trackId          String?           @db.Uuid
-  name             String
-  slug             String
-  tagline          String?
-  description      String?
-  repositoryUrl    String?
-  demoUrl          String?
-  status           ProjectStatus     @default(DRAFT)
-  createdAt        DateTime          @default(now()) @db.Timestamptz(6)
-  updatedAt        DateTime          @updatedAt @db.Timestamptz(6)
-  event            Event             @relation("Project_eventId", fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  team             Team              @relation("Project_teamId", fields: [teamId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  track            Track?            @relation("Project_trackId", fields: [trackId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  submissions      Submission[]      @relation("Submission_projectId")
-  judgeConflicts   JudgeConflict[]   @relation("JudgeConflict_projectId")
-  projectScores    ProjectScore[]    @relation("ProjectScore_projectId")
-  projectResults   ProjectResult[]   @relation("ProjectResult_projectId")
-  normalizedScores NormalizedScore[] @relation("NormalizedScore_projectId")
-  communityVotes   CommunityVote[]   @relation("CommunityVote_project_event")
-  publicComments   ProjectComment[]  @relation("ProjectComment_project_event")
-  importedComments ImportedProjectComment[]
-  importedVoteAggregates ImportedVoteAggregate[]
-  pairwiseAssignmentsA PairwiseAssignment[] @relation("PairwiseAssignment_projectAId")
-  pairwiseAssignmentsB PairwiseAssignment[] @relation("PairwiseAssignment_projectBId")
-  pairwiseComparisonsWon PairwiseComparison[] @relation("PairwiseComparison_winnerProjectId")
-  pairwiseComparisonsLost PairwiseComparison[] @relation("PairwiseComparison_loserProjectId")
-  pairwiseProjectResults PairwiseProjectResult[] @relation("PairwiseProjectResult_projectId")
+  id                      String                       @id @default(uuid()) @db.Uuid
+  eventId                 String                       @db.Uuid
+  teamId                  String                       @db.Uuid
+  trackId                 String?                      @db.Uuid
+  name                    String
+  slug                    String
+  tagline                 String?
+  description             String?
+  repositoryUrl           String?
+  demoUrl                 String?
+  status                  ProjectStatus                @default(DRAFT)
+  createdAt               DateTime                     @default(now()) @db.Timestamptz(6)
+  updatedAt               DateTime                     @updatedAt @db.Timestamptz(6)
+  event                   Event                        @relation("Project_eventId", fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  team                    Team                         @relation("Project_teamId", fields: [teamId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  track                   Track?                       @relation("Project_trackId", fields: [trackId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  submissions             Submission[]                 @relation("Submission_projectId")
+  judgeConflicts          JudgeConflict[]              @relation("JudgeConflict_projectId")
+  projectScores           ProjectScore[]               @relation("ProjectScore_projectId")
+  projectResults          ProjectResult[]              @relation("ProjectResult_projectId")
+  normalizedScores        NormalizedScore[]            @relation("NormalizedScore_projectId")
+  communityVotes          CommunityVote[]              @relation("CommunityVote_project_event")
+  publicComments          ProjectComment[]             @relation("ProjectComment_project_event")
+  importedComments        ImportedProjectComment[]
+  importedVoteAggregates  ImportedVoteAggregate[]
+  pairwiseAssignmentsA    PairwiseAssignment[]         @relation("PairwiseAssignment_projectAId")
+  pairwiseAssignmentsB    PairwiseAssignment[]         @relation("PairwiseAssignment_projectBId")
+  pairwiseComparisonsWon  PairwiseComparison[]         @relation("PairwiseComparison_winnerProjectId")
+  pairwiseComparisonsLost PairwiseComparison[]         @relation("PairwiseComparison_loserProjectId")
+  pairwiseProjectResults  PairwiseProjectResult[]      @relation("PairwiseProjectResult_projectId")
+  pairwiseSnapshots       PairwiseRunProjectSnapshot[] @relation("PairwiseRunProjectSnapshot_projectId")
 
   @@unique([eventId, slug])
   @@unique([id, eventId])
@@ -489,8 +490,8 @@ model Project {
 }
 
 model Submission {
-  id                  String                  @id @default(uuid()) @db.Uuid
-  projectId           String                  @db.Uuid
+  id                  String                       @id @default(uuid()) @db.Uuid
+  projectId           String                       @db.Uuid
   version             Int
   title               String
   description         String
@@ -498,18 +499,19 @@ model Submission {
   demoUrl             String?
   projectName         String?
   projectTagline      String?
-  trackId             String?                 @db.Uuid
+  trackId             String?                      @db.Uuid
   trackName           String?
-  status              SubmissionStatus        @default(DRAFT)
-  createdById         String                  @db.Uuid
-  submittedAt         DateTime?               @db.Timestamptz(6)
-  lockedAt            DateTime?               @db.Timestamptz(6)
-  createdAt           DateTime                @default(now()) @db.Timestamptz(6)
-  project             Project                 @relation("Submission_projectId", fields: [projectId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  createdBy           User                    @relation("Submission_createdById", fields: [createdById], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  judgeAssignments    JudgeAssignment[]       @relation("JudgeAssignment_submissionId")
-  assignmentProposals AssignmentRunProposal[] @relation("AssignmentRunProposal_submissionId")
-  normalizedScores    NormalizedScore[]       @relation("NormalizedScore_submissionId")
+  status              SubmissionStatus             @default(DRAFT)
+  createdById         String                       @db.Uuid
+  submittedAt         DateTime?                    @db.Timestamptz(6)
+  lockedAt            DateTime?                    @db.Timestamptz(6)
+  createdAt           DateTime                     @default(now()) @db.Timestamptz(6)
+  project             Project                      @relation("Submission_projectId", fields: [projectId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdBy           User                         @relation("Submission_createdById", fields: [createdById], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  judgeAssignments    JudgeAssignment[]            @relation("JudgeAssignment_submissionId")
+  assignmentProposals AssignmentRunProposal[]      @relation("AssignmentRunProposal_submissionId")
+  normalizedScores    NormalizedScore[]            @relation("NormalizedScore_submissionId")
+  pairwiseSnapshots   PairwiseRunProjectSnapshot[] @relation("PairwiseRunProjectSnapshot_submissionId")
 
   @@unique([projectId, version])
   @@index([createdById])
@@ -1094,26 +1096,26 @@ model EventArchiveInstance {
 
 /// A successful import; the unique source/package tuple enforces idempotency.
 model EventArchiveImport {
-  id                 String   @id @default(uuid()) @db.Uuid
-  sourceInstanceId   String   @db.Uuid
-  sourceEventId      String   @db.Uuid
-  packageHash        String   @db.Char(64)
-  destinationEventId String   @unique @db.Uuid
-  importedById       String   @db.Uuid
-  importedAt         DateTime @default(now()) @db.Timestamptz(6)
-  destinationEvent   Event    @relation("EventArchiveImport_destinationEventId", fields: [destinationEventId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  importedBy         User     @relation("EventArchiveImport_importedById", fields: [importedById], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  id                 String                  @id @default(uuid()) @db.Uuid
+  sourceInstanceId   String                  @db.Uuid
+  sourceEventId      String                  @db.Uuid
+  packageHash        String                  @db.Char(64)
+  destinationEventId String                  @unique @db.Uuid
+  importedById       String                  @db.Uuid
+  importedAt         DateTime                @default(now()) @db.Timestamptz(6)
+  destinationEvent   Event                   @relation("EventArchiveImport_destinationEventId", fields: [destinationEventId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  importedBy         User                    @relation("EventArchiveImport_importedById", fields: [importedById], references: [id], onDelete: Restrict, onUpdate: Restrict)
   entities           EventArchiveEntityMap[]
 
   @@unique([sourceInstanceId, sourceEventId, packageHash])
 }
 
 model EventArchiveEntityMap {
-  importId       String @db.Uuid
-  model          String @db.VarChar(80)
-  sourceId       String @db.VarChar(160)
-  destinationId  String @db.VarChar(160)
-  archiveImport  EventArchiveImport @relation(fields: [importId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  importId      String             @db.Uuid
+  model         String             @db.VarChar(80)
+  sourceId      String             @db.VarChar(160)
+  destinationId String             @db.VarChar(160)
+  archiveImport EventArchiveImport @relation(fields: [importId], references: [id], onDelete: Restrict, onUpdate: Restrict)
 
   @@id([importId, model, sourceId])
   @@unique([importId, model, destinationId])
@@ -1133,9 +1135,9 @@ model EventArchivePreview {
 
 /// Aggregate-only imported ballots; no VotingIdentity or individual vote is reconstructed.
 model ImportedVoteAggregate {
-  id        String @id @default(uuid()) @db.Uuid
-  eventId   String @db.Uuid
-  projectId String @db.Uuid
+  id        String  @id @default(uuid()) @db.Uuid
+  eventId   String  @db.Uuid
+  projectId String  @db.Uuid
   count     Int
   event     Event   @relation("ImportedVoteAggregate_eventId", fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   project   Project @relation(fields: [projectId], references: [id], onDelete: Restrict, onUpdate: Restrict)
@@ -1159,20 +1161,22 @@ model ImportedProjectComment {
 }
 
 model PairwiseRun {
-  id               String               @id @default(uuid()) @db.Uuid
-  eventId          String               @db.Uuid
-  status           PairwiseRunStatus    @default(DRAFT)
-  algorithm        String               @default("BRADLEY_TERRY_RIDGE")
-  algorithmVersion String               @default("V1")
-  lambda           Decimal              @default(0.01) @db.Decimal(12, 6)
-  createdById      String               @db.Uuid
-  createdAt        DateTime             @default(now()) @db.Timestamptz(6)
-  publishedAt      DateTime?            @db.Timestamptz(6)
-  closedAt         DateTime?            @db.Timestamptz(6)
-  event            Event                @relation("PairwiseRun_eventId", fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  createdBy        User                 @relation("PairwiseRun_createdById", fields: [createdById], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  assignments      PairwiseAssignment[] @relation("PairwiseAssignment_runId")
-  rankingRuns      PairwiseRankingRun[] @relation("PairwiseRankingRun_pairwiseRunId")
+  id                String                       @id @default(uuid()) @db.Uuid
+  eventId           String                       @db.Uuid
+  status            PairwiseRunStatus            @default(DRAFT)
+  algorithm         String                       @default("BRADLEY_TERRY_RIDGE")
+  algorithmVersion  String                       @default("V1")
+  lambda            Decimal                      @default(0.01) @db.Decimal(12, 6)
+  createdById       String                       @db.Uuid
+  createdAt         DateTime                     @default(now()) @db.Timestamptz(6)
+  publishedAt       DateTime?                    @db.Timestamptz(6)
+  closedAt          DateTime?                    @db.Timestamptz(6)
+  event             Event                        @relation("PairwiseRun_eventId", fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdBy         User                         @relation("PairwiseRun_createdById", fields: [createdById], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  assignments       PairwiseAssignment[]         @relation("PairwiseAssignment_runId")
+  rankingRuns       PairwiseRankingRun[]         @relation("PairwiseRankingRun_pairwiseRunId")
+  snapshotsFrozenAt DateTime?                    @db.Timestamptz(6)
+  projectSnapshots  PairwiseRunProjectSnapshot[] @relation("PairwiseRunProjectSnapshot_pairwiseRunId")
 
   @@index([eventId, createdAt])
   @@index([createdById])
@@ -1215,23 +1219,23 @@ model PairwiseComparison {
 }
 
 model PairwiseRankingRun {
-  id                         String                  @id @default(uuid()) @db.Uuid
-  pairwiseRunId              String                  @db.Uuid
-  algorithm                  String                  @default("BRADLEY_TERRY_RIDGE")
-  algorithmVersion           String                  @default("V1")
-  lambda                     Decimal                 @default(0.01) @db.Decimal(12, 6)
-  inputSetHash               String                  @db.VarChar(64)
-  comparisonCount            Int
-  projectCount               Int
-  componentCount             Int
-  converged                  Boolean
-  iterations                 Int
-  finalDelta                 Decimal                 @db.Decimal(20, 10)
-  stronglyConnectedWinGraph  Boolean                 @default(true)
-  separationRisk             Boolean                 @default(false)
-  createdAt                  DateTime                @default(now()) @db.Timestamptz(6)
-  pairwiseRun                PairwiseRun             @relation("PairwiseRankingRun_pairwiseRunId", fields: [pairwiseRunId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  projectResults             PairwiseProjectResult[] @relation("PairwiseProjectResult_rankingRunId")
+  id                        String                  @id @default(uuid()) @db.Uuid
+  pairwiseRunId             String                  @db.Uuid
+  algorithm                 String                  @default("BRADLEY_TERRY_RIDGE")
+  algorithmVersion          String                  @default("V1")
+  lambda                    Decimal                 @default(0.01) @db.Decimal(12, 6)
+  inputSetHash              String                  @db.VarChar(64)
+  comparisonCount           Int
+  projectCount              Int
+  componentCount            Int
+  converged                 Boolean
+  iterations                Int
+  finalDelta                Decimal                 @db.Decimal(20, 10)
+  stronglyConnectedWinGraph Boolean                 @default(true)
+  separationRisk            Boolean                 @default(false)
+  createdAt                 DateTime                @default(now()) @db.Timestamptz(6)
+  pairwiseRun               PairwiseRun             @relation("PairwiseRankingRun_pairwiseRunId", fields: [pairwiseRunId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  projectResults            PairwiseProjectResult[] @relation("PairwiseProjectResult_rankingRunId")
 
   @@unique([pairwiseRunId, algorithm, algorithmVersion, lambda, inputSetHash])
   @@index([pairwiseRunId, createdAt])
@@ -1252,4 +1256,19 @@ model PairwiseProjectResult {
 
   @@unique([rankingRunId, projectId])
   @@index([projectId])
+}
+
+model PairwiseRunProjectSnapshot {
+  id            String      @id @default(uuid()) @db.Uuid
+  pairwiseRunId String      @db.Uuid
+  projectId     String      @db.Uuid
+  submissionId  String      @db.Uuid
+  createdAt     DateTime    @default(now()) @db.Timestamptz(6)
+  pairwiseRun   PairwiseRun @relation("PairwiseRunProjectSnapshot_pairwiseRunId", fields: [pairwiseRunId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  project       Project     @relation("PairwiseRunProjectSnapshot_projectId", fields: [projectId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  submission    Submission  @relation("PairwiseRunProjectSnapshot_submissionId", fields: [submissionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([pairwiseRunId, projectId])
+  @@index([projectId])
+  @@index([submissionId])
 }
