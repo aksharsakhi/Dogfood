@@ -8,8 +8,10 @@ import {
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { randomUUID } from 'node:crypto';
 import fastifyCookie from '@fastify/cookie';
+import Fastify from 'fastify';
 import { AppModule } from './app.module';
 import { ApiExceptionFilter } from './common/errors/api-exception.filter';
+import { MAX_ARCHIVE_BYTES } from './modules/event-archive/archive-format';
 
 export async function configureApp(
   app: NestFastifyApplication,
@@ -54,13 +56,22 @@ export async function configureApp(
   app.enableShutdownHooks();
 }
 export async function createApp(webOrigin: string) {
+  const fastifyInstance = Fastify({
+    genReqId: () => randomUUID(),
+    requestIdHeader: false,
+    bodyLimit: 1024 * 1024,
+  });
+  fastifyInstance.addHook('onRoute', (routeOptions) => {
+    if (
+      typeof routeOptions.url === 'string' &&
+      routeOptions.url.includes('/events/archives/')
+    ) {
+      routeOptions.bodyLimit = MAX_ARCHIVE_BYTES + 1024 * 1024;
+    }
+  });
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
-    new FastifyAdapter({
-      genReqId: () => randomUUID(),
-      requestIdHeader: false,
-      bodyLimit: 1024 * 1024,
-    }),
+    new FastifyAdapter(fastifyInstance),
   );
   await configureApp(app, webOrigin);
   return app;

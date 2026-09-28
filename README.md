@@ -22,6 +22,7 @@ The platform runs without third-party cloud dependencies. Offline cold runtime b
 - [JUDGE-RECORDS.md](JUDGE-RECORDS.md): Printable certificate claims, signed judge-record payloads, canonicalization, and offline verification.
 - [JUDGE-RECORD-KEYS.md](JUDGE-RECORD-KEYS.md): Independently published local/demo signing-key fingerprint and rotation trust guidance.
 - [docs/OFFICIAL-FIXTURE-IMPORT.md](docs/OFFICIAL-FIXTURE-IMPORT.md): Fixture import semantics, deterministic UUIDs, and acceptance session token generation.
+- [docs/EVENT-ARCHIVE.md](docs/EVENT-ARCHIVE.md): Organizer archive format, privacy, import workflow, provenance, and compatibility.
 
 ```text
 apps/web/             Next.js shell, judge/organizer workspaces, public voting and comments

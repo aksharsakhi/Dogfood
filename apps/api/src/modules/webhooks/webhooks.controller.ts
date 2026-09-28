@@ -69,6 +69,19 @@ export class WebhooksController {
     await this.webhooks.disable(principal, eventId, subscriptionId);
   }
 
+  @Post('webhooks/:subscriptionId/destination-secret')
+  configureImportedSecret(
+    @CurrentPrincipal() principal: SessionPrincipal,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('subscriptionId', ParseUUIDPipe) subscriptionId: string,
+  ) {
+    return this.webhooks.configureImportedSecret(
+      principal,
+      eventId,
+      subscriptionId,
+    );
+  }
+
   @Get('webhook-deliveries')
   history(
     @CurrentPrincipal() principal: SessionPrincipal,

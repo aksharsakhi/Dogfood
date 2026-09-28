@@ -487,10 +487,14 @@ export class CommunityVotingService {
         'This project is not in the public gallery.',
       );
     const cursor = query.cursor
-      ? await this.db.projectComment.findFirst({
+      ? ((await this.db.projectComment.findFirst({
           where: { id: query.cursor, eventId, projectId, status: 'VISIBLE' },
           select: { id: true, createdAt: true },
-        })
+        })) ??
+        (await this.db.importedProjectComment.findFirst({
+          where: { id: query.cursor, eventId, projectId, status: 'VISIBLE' },
+          select: { id: true, createdAt: true },
+        })))
       : null;
     if (query.cursor && !cursor)
       fail(400, 'INVALID_COMMENT_CURSOR', 'Comment cursor is invalid.');
@@ -513,10 +517,33 @@ export class CommunityVotingService {
       select: { id: true, body: true, createdAt: true },
       take: pageSize + 1,
     });
-    const page = rows.slice(0, pageSize);
+    const importedRows = await this.db.importedProjectComment.findMany({
+      where: {
+        eventId,
+        projectId,
+        status: 'VISIBLE',
+        ...(cursor
+          ? {
+              OR: [
+                { createdAt: { gt: cursor.createdAt } },
+                { createdAt: cursor.createdAt, id: { gt: cursor.id } },
+              ],
+            }
+          : {}),
+      },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      select: { id: true, body: true, createdAt: true },
+      take: pageSize + 1,
+    });
+    const combined = [...rows, ...importedRows].sort(
+      (a, b) =>
+        a.createdAt.getTime() - b.createdAt.getTime() ||
+        a.id.localeCompare(b.id),
+    );
+    const page = combined.slice(0, pageSize);
     return {
       items: page.map((row) => ({ ...row, body: escapeHtml(row.body) })),
-      nextCursor: rows.length > pageSize ? page.at(-1)!.id : null,
+      nextCursor: combined.length > pageSize ? page.at(-1)!.id : null,
     };
   }
 
@@ -648,6 +675,12 @@ export class CommunityVotingService {
     const tally = new Map(
       counts.map((row) => [row.projectId, row._count._all]),
     );
+    const importedCounts = await this.db.importedVoteAggregate.findMany({
+      where: { eventId, projectId: { in: projects.map((row) => row.id) } },
+      select: { projectId: true, count: true },
+    });
+    for (const row of importedCounts)
+      tally.set(row.projectId, (tally.get(row.projectId) ?? 0) + row.count);
     return {
       items: projects.map((row) => ({
         projectId: row.id,

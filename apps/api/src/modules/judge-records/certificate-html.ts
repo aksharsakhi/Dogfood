@@ -63,6 +63,11 @@ export function judgeRecordCertificate(input: {
   publicKeyPem: string;
   fingerprint: string;
   status: string;
+  source?: {
+    instanceId: string;
+    eventId: string | null;
+    recordId: string | null;
+  } | null;
   supersededByRecordId?: string;
   revokedAt?: string;
 }): string {
@@ -77,8 +82,11 @@ export function judgeRecordCertificate(input: {
     : input.supersededByRecordId
       ? `<p>Superseded by record <code>${escapeHtml(input.supersededByRecordId)}</code>.</p>`
       : '';
+  const sourceDetails = input.source
+    ? `<p>Historical source-issued record. Source instance <code>${escapeHtml(input.source.instanceId)}</code>; source event <code>${escapeHtml(input.source.eventId ?? '')}</code>; source record <code>${escapeHtml(input.source.recordId ?? '')}</code>. The destination did not re-sign this record.</p>`
+    : '<p>Destination-issued record.</p>';
   return certificateHtml(
     'Signed judge participation record',
-    `<h1>Signed judge participation record</h1><p>Cryptographic signature status: <strong>${escapeHtml(input.status)}</strong>.</p>${statusDetails}<dl><dt>Record identifier</dt><dd><code>${escapeHtml(input.recordId)}</code></dd>${items}<dt>Canonical payload JSON (the exact signed UTF-8 bytes)</dt><dd><code>${escapeHtml(input.canonicalPayload)}</code></dd><dt>Public key fingerprint (SHA-256 of raw Ed25519 public key)</dt><dd><code>${escapeHtml(input.fingerprint)}</code></dd><dt>Public key (PEM)</dt><dd><code>${escapeHtml(input.publicKeyPem)}</code></dd><dt>Ed25519 signature (base64url)</dt><dd><code>${escapeHtml(input.signature)}</code></dd></dl><p>Anyone can verify this signature offline with the public key and canonical payload. Signature validity does not by itself establish which installation controls the key.</p>`,
+    `<h1>Signed judge participation record</h1><p>Cryptographic signature status: <strong>${escapeHtml(input.status)}</strong>.</p>${sourceDetails}${statusDetails}<dl><dt>Record identifier</dt><dd><code>${escapeHtml(input.recordId)}</code></dd>${items}<dt>Canonical payload JSON (the exact signed UTF-8 bytes)</dt><dd><code>${escapeHtml(input.canonicalPayload)}</code></dd><dt>Public key fingerprint (SHA-256 of raw Ed25519 public key)</dt><dd><code>${escapeHtml(input.fingerprint)}</code></dd><dt>Public key (PEM)</dt><dd><code>${escapeHtml(input.publicKeyPem)}</code></dd><dt>Ed25519 signature (base64url)</dt><dd><code>${escapeHtml(input.signature)}</code></dd></dl><p>Anyone can verify this signature offline with the public key and canonical payload. Signature validity does not by itself establish which installation controls the key.</p>`,
   );
 }

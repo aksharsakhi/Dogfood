@@ -60,7 +60,7 @@ describe('voting and webhook secret boot configuration', () => {
       't3b-configuration-test-secret-32-chars-or-more';
     process.env.WEBHOOK_ENCRYPTION_KEY =
       't4a-configuration-test-encryption-key-32-chars';
-    delete process.env.JUDGE_RECORD_SIGNING_KEY_SEED;
+    process.env.JUDGE_RECORD_SIGNING_KEY_SEED = '';
     expect(() => loadEnvironment()).toThrow(
       'JUDGE_RECORD_SIGNING_KEY_SEED is required at API startup and must be an independently generated 32-byte hex seed (64 hex characters).',
     );
@@ -124,7 +124,7 @@ describe('voting and webhook secret boot configuration', () => {
   it('fails before API creation when the webhook encryption key is missing', () => {
     process.env.VOTING_TOKEN_SECRET =
       't3b-configuration-test-secret-32-chars-or-more';
-    delete process.env.WEBHOOK_ENCRYPTION_KEY;
+    process.env.WEBHOOK_ENCRYPTION_KEY = '';
     expect(() => loadEnvironment()).toThrow(
       'WEBHOOK_ENCRYPTION_KEY is required at API startup and must contain at least 32 non-whitespace characters.',
     );

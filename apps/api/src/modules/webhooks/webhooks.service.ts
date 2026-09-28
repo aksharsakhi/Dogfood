@@ -23,9 +23,9 @@ import { WebhookTransport } from './webhook-transport';
 const retryLimit = 8;
 const pageSize = 50;
 type SecretParts = {
-  secretCiphertext: string;
-  secretIv: string;
-  secretAuthTag: string;
+  secretCiphertext: string | null;
+  secretIv: string | null;
+  secretAuthTag: string | null;
 };
 
 @Injectable()
@@ -84,6 +84,12 @@ export class WebhooksService implements OnModuleInit, OnModuleDestroy {
   }
 
   private decrypt(subscription: SecretParts): string {
+    if (
+      !subscription.secretCiphertext ||
+      !subscription.secretIv ||
+      !subscription.secretAuthTag
+    )
+      throw new Error('Webhook subscription requires a destination secret.');
     const decipher = createDecipheriv(
       'aes-256-gcm',
       this.encryptionKey(),
@@ -192,10 +198,16 @@ export class WebhooksService implements OnModuleInit, OnModuleDestroy {
     return this.db.$transaction(async (tx) => {
       const existing = await tx.webhookSubscription.findFirst({
         where: { id: subscriptionId, eventId },
-        select: { id: true },
+        select: { id: true, secretCiphertext: true },
       });
       if (!existing)
         fail(404, 'WEBHOOK_NOT_FOUND', 'Webhook subscription was not found.');
+      if (dto.active && !existing.secretCiphertext)
+        fail(
+          409,
+          'WEBHOOK_SECRET_REQUIRED',
+          'Configure a new destination secret before enabling this subscription.',
+        );
       const updated = await tx.webhookSubscription.update({
         where: { id: subscriptionId },
         data: {
@@ -232,6 +244,39 @@ export class WebhooksService implements OnModuleInit, OnModuleDestroy {
     subscriptionId: string,
   ) {
     return this.update(principal, eventId, subscriptionId, { active: false });
+  }
+
+  async configureImportedSecret(
+    principal: SessionPrincipal,
+    eventId: string,
+    subscriptionId: string,
+  ) {
+    await this.authorize(principal, eventId);
+    const secret = randomBytes(32).toString('base64url');
+    await this.db.$transaction(async (tx) => {
+      const existing = await tx.webhookSubscription.findFirst({
+        where: { id: subscriptionId, eventId, active: false },
+        select: { id: true },
+      });
+      if (!existing)
+        fail(
+          404,
+          'WEBHOOK_NOT_FOUND',
+          'Disabled webhook subscription was not found.',
+        );
+      await tx.webhookSubscription.update({
+        where: { id: subscriptionId },
+        data: this.encrypt(secret),
+      });
+      await this.audit.record(tx, {
+        action: 'WEBHOOK_DESTINATION_SECRET_CONFIGURED',
+        entityType: 'WebhookSubscription',
+        entityId: subscriptionId,
+        eventId,
+        actorUserId: principal.userId,
+      });
+    });
+    return { signingSecret: secret };
   }
 
   async history(principal: SessionPrincipal, eventId: string, cursor?: string) {

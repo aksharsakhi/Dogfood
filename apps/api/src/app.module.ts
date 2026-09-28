@@ -11,6 +11,7 @@ import { JudgingModule } from './modules/judging/judging.module';
 import { CommunityVotingModule } from './modules/community-voting/voting.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { JudgeRecordsModule } from './modules/judge-records/judge-records.module';
+import { EventArchiveModule } from './modules/event-archive/archive.module';
 @Module({
   imports: [
     DatabaseModule,
@@ -25,6 +26,7 @@ import { JudgeRecordsModule } from './modules/judge-records/judge-records.module
     CommunityVotingModule,
     WebhooksModule,
     JudgeRecordsModule,
+    EventArchiveModule,
   ],
 })
 export class AppModule {}

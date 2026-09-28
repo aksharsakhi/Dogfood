@@ -77,3 +77,7 @@ payload and signature contract.
 ## Dependencies and deployment
 
 Node 22+, Next.js 16, NestJS 11 and Prisma 6 are pinned by the npm lockfile. Prisma 6 deliberately keeps the mature schema/client migration workflow; upgrading majors is a separate change. Docker uses Debian images with OpenSSL, a non-root application user, persistent PostgreSQL 16 storage, automatic migrations and official fixture import before API startup, readiness-based service ordering, and full self-hosted offline operation. Images retain workspace tooling to allow migrations and explicit development seeding; pruning production images can follow once CI verifies all runtime assets. Development secrets in `.env.example` are public defaults only.
+
+# Portable event archive
+
+T4C adds an organizer-authorized, event-scoped archive exporter and a two-step preview/confirm importer. The format, validator, deterministic ID planner, importer, and semantic normalizer live in `apps/api/src/modules/event-archive`. Import creates a private draft event inside one transaction and follows dependency order: placeholder users → event/organizer → memberships/tracks/prizes/registrations/teams/projects/submissions/judge profiles → rubrics/criteria → assignment runs/proposals/assignments → evaluations/scores → score/results snapshots → public signing keys/records → disabled webhooks → privacy-safe votes/comments → provenance/audit. Existing SQL triggers remain active; intermediate judging status transitions are respected. See [archive specification](docs/EVENT-ARCHIVE.md).

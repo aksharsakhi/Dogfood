@@ -175,7 +175,8 @@ enum WebhookDeliveryStatus {
 model User {
   id                          String                @id @default(uuid()) @db.Uuid
   email                       String                @unique @db.VarChar(320)
-  passwordHash                String
+  passwordHash                String?
+  importedPlaceholder         Boolean               @default(false)
   displayName                 String
   emailVerifiedAt             DateTime?             @db.Timestamptz(6)
   status                      UserStatus            @default(ACTIVE)
@@ -202,6 +203,9 @@ model User {
   votingIdentities            VotingIdentity[]      @relation("VotingIdentity_userId")
   moderatedComments           ProjectComment[]      @relation("ProjectComment_hiddenById")
   createdWebhookSubscriptions WebhookSubscription[] @relation("WebhookSubscription_createdById")
+  archiveImports              EventArchiveImport[]  @relation("EventArchiveImport_importedById")
+  archivePreviews             EventArchivePreview[] @relation("EventArchivePreview_actorUserId")
+  importedComments            ImportedProjectComment[] @relation("ImportedProjectComment_authorUserId")
 }
 
 model Session {
@@ -279,6 +283,9 @@ model Event {
   webhookOutboxEvents       WebhookOutboxEvent[]       @relation("WebhookOutboxEvent_eventId")
   judgeRecordSubjects       JudgeRecordSubject[]       @relation("JudgeRecordSubject_eventId")
   judgeParticipationRecords JudgeParticipationRecord[] @relation("JudgeParticipationRecord_eventId")
+  archiveImport             EventArchiveImport?        @relation("EventArchiveImport_destinationEventId")
+  importedVoteAggregates    ImportedVoteAggregate[]    @relation("ImportedVoteAggregate_eventId")
+  importedComments          ImportedProjectComment[]   @relation("ImportedProjectComment_eventId")
 
   @@unique([id, votingAccessMode])
   @@index([status])
@@ -453,6 +460,8 @@ model Project {
   normalizedScores NormalizedScore[] @relation("NormalizedScore_projectId")
   communityVotes   CommunityVote[]   @relation("CommunityVote_project_event")
   publicComments   ProjectComment[]  @relation("ProjectComment_project_event")
+  importedComments ImportedProjectComment[]
+  importedVoteAggregates ImportedVoteAggregate[]
 
   @@unique([eventId, slug])
   @@unique([id, eventId])
@@ -869,6 +878,9 @@ model JudgeParticipationRecord {
   canonicalPayload   String                    @db.Text
   signature          String                    @db.Text
   supersedesRecordId String?                   @unique @db.Uuid
+  sourceInstanceId   String?                   @db.Uuid
+  sourceEventId      String?                   @db.Uuid
+  sourceRecordId     String?                   @db.Uuid
   event              Event                     @relation("JudgeParticipationRecord_eventId", fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   judgeProfile       JudgeProfile              @relation("JudgeParticipationRecord_judgeProfileId", fields: [judgeProfileId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   subject            JudgeRecordSubject        @relation("JudgeParticipationRecord_subjectId", fields: [subjectId], references: [id], onDelete: Restrict, onUpdate: Restrict)
@@ -986,9 +998,9 @@ model WebhookSubscription {
   createdById      String            @db.Uuid
   url              String
   eventTypes       String[]          @default([])
-  secretCiphertext String
-  secretIv         String            @db.VarChar(32)
-  secretAuthTag    String            @db.VarChar(32)
+  secretCiphertext String?
+  secretIv         String?           @db.VarChar(32)
+  secretAuthTag    String?           @db.VarChar(32)
   active           Boolean           @default(true)
   createdAt        DateTime          @default(now()) @db.Timestamptz(6)
   updatedAt        DateTime          @updatedAt @db.Timestamptz(6)
@@ -1052,4 +1064,76 @@ model WebhookDeliveryAttempt {
 
   @@unique([deliveryId, attemptNo])
   @@index([deliveryId, startedAt])
+}
+
+/// Stable identifier for archives exported by this database installation.
+model EventArchiveInstance {
+  singleton Int    @id @default(1)
+  id        String @unique @db.Uuid
+}
+
+/// A successful import; the unique source/package tuple enforces idempotency.
+model EventArchiveImport {
+  id                 String   @id @default(uuid()) @db.Uuid
+  sourceInstanceId   String   @db.Uuid
+  sourceEventId      String   @db.Uuid
+  packageHash        String   @db.Char(64)
+  destinationEventId String   @unique @db.Uuid
+  importedById       String   @db.Uuid
+  importedAt         DateTime @default(now()) @db.Timestamptz(6)
+  destinationEvent   Event    @relation("EventArchiveImport_destinationEventId", fields: [destinationEventId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  importedBy         User     @relation("EventArchiveImport_importedById", fields: [importedById], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  entities           EventArchiveEntityMap[]
+
+  @@unique([sourceInstanceId, sourceEventId, packageHash])
+}
+
+model EventArchiveEntityMap {
+  importId       String @db.Uuid
+  model          String @db.VarChar(80)
+  sourceId       String @db.VarChar(160)
+  destinationId  String @db.VarChar(160)
+  archiveImport  EventArchiveImport @relation(fields: [importId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([importId, model, sourceId])
+  @@unique([importId, model, destinationId])
+}
+
+/// Operational proof that an actor inspected the exact package before confirm.
+model EventArchivePreview {
+  id          String   @id @default(uuid()) @db.Uuid
+  actorUserId String   @db.Uuid
+  packageHash String   @db.Char(64)
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  expiresAt   DateTime @db.Timestamptz(6)
+  actor       User     @relation("EventArchivePreview_actorUserId", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([actorUserId, packageHash, expiresAt])
+}
+
+/// Aggregate-only imported ballots; no VotingIdentity or individual vote is reconstructed.
+model ImportedVoteAggregate {
+  id        String @id @default(uuid()) @db.Uuid
+  eventId   String @db.Uuid
+  projectId String @db.Uuid
+  count     Int
+  event     Event   @relation("ImportedVoteAggregate_eventId", fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([eventId, projectId])
+}
+
+/// Historical comments with an unclaimed author, never linked to a voting credential.
+model ImportedProjectComment {
+  id           String               @id @default(uuid()) @db.Uuid
+  eventId      String               @db.Uuid
+  projectId    String               @db.Uuid
+  authorUserId String               @db.Uuid
+  body         String               @db.VarChar(2000)
+  status       ProjectCommentStatus @default(VISIBLE)
+  createdAt    DateTime             @db.Timestamptz(6)
+  hiddenAt     DateTime?            @db.Timestamptz(6)
+  event        Event                @relation("ImportedProjectComment_eventId", fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  project      Project              @relation(fields: [projectId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  author       User                 @relation("ImportedProjectComment_authorUserId", fields: [authorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
 }

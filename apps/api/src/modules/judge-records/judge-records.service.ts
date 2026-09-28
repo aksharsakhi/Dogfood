@@ -328,6 +328,9 @@ export class JudgeRecordsService implements OnModuleInit {
           ? 'SUPERSEDED'
           : 'ACTIVE',
       supersededByRecordId: record.supersededBy?.id ?? null,
+      sourceIssued: record.sourceInstanceId !== null,
+      sourceInstanceId: record.sourceInstanceId,
+      sourceEventId: record.sourceEventId,
     }));
   }
 
@@ -356,6 +359,9 @@ export class JudgeRecordsService implements OnModuleInit {
         : record.supersededBy
           ? 'SUPERSEDED'
           : 'ACTIVE',
+      sourceIssued: record.sourceInstanceId !== null,
+      sourceInstanceId: record.sourceInstanceId,
+      sourceEventId: record.sourceEventId,
     }));
   }
 
@@ -456,6 +462,14 @@ export class JudgeRecordsService implements OnModuleInit {
         fingerprint: record.issuerKey.fingerprint,
         publicKeyPem: record.issuerKey.publicKeyPem,
       },
+      sourceIssued: record.sourceInstanceId !== null,
+      source: record.sourceInstanceId
+        ? {
+            instanceId: record.sourceInstanceId,
+            eventId: record.sourceEventId,
+            recordId: record.sourceRecordId,
+          }
+        : null,
       supersededByRecordId: record.supersededBy?.id ?? null,
       revocation: record.revocation
         ? {
@@ -502,6 +516,7 @@ export class JudgeRecordsService implements OnModuleInit {
       publicKeyPem: verified.publicKey.publicKeyPem,
       fingerprint: verified.publicKey.fingerprint,
       status: verified.status,
+      source: verified.source,
       supersededByRecordId: verified.supersededByRecordId ?? undefined,
       revokedAt: verified.revocation
         ? String(
