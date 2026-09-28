@@ -9,6 +9,8 @@ import { HealthModule } from './modules/health/health.module';
 import { TimeModule } from './common/time.module';
 import { JudgingModule } from './modules/judging/judging.module';
 import { CommunityVotingModule } from './modules/community-voting/voting.module';
+import { WebhooksModule } from './modules/webhooks/webhooks.module';
+import { JudgeRecordsModule } from './modules/judge-records/judge-records.module';
 @Module({
   imports: [
     DatabaseModule,
@@ -21,6 +23,8 @@ import { CommunityVotingModule } from './modules/community-voting/voting.module'
     HealthModule,
     JudgingModule,
     CommunityVotingModule,
+    WebhooksModule,
+    JudgeRecordsModule,
   ],
 })
 export class AppModule {}

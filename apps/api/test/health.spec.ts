@@ -8,6 +8,7 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/bootstrap';
 import { DatabaseService } from '../src/infrastructure/database/database.service';
+import { JudgeRecordsService } from '../src/modules/judge-records/judge-records.service';
 describe('API foundation', () => {
   let app: NestFastifyApplication;
   const query = jest.fn();
@@ -15,6 +16,8 @@ describe('API foundation', () => {
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(DatabaseService)
       .useValue({ $queryRaw: query })
+      .overrideProvider(JudgeRecordsService)
+      .useValue({ onModuleInit: jest.fn() })
       .compile();
     app = module.createNestApplication<NestFastifyApplication>(
       new FastifyAdapter(),
@@ -22,6 +25,7 @@ describe('API foundation', () => {
     await configureApp(app, 'http://localhost:3000');
     await app.init();
     await app.getHttpAdapter().getInstance().ready();
+    await app.listen(0, '127.0.0.1');
   });
   afterAll(async () => {
     await app.close();

@@ -204,3 +204,36 @@ The official `spec.md` describes T3 as community voting, comments, results hidde
 - **Abuse signals:** Votes from different identities with the same keyed request fingerprint within an hour are flagged when they arrive within ten seconds, or when at least three such identities appear in the hour. Fingerprints are derived from the request IP and user agent; shared networks can produce false positives and proxies can weaken attribution. Signals create organizer-only audit entries for review. They never automatically block or reject votes, and voters are not told whether a signal was recorded.
 - **Ordering and results:** The ballot uses a stable keyed per-identity permutation of eligible submitted projects. No ballot or public comment response includes vote counts or turnout. Organizers can read live tallies; every other caller receives an explicit denial until the server clock reaches `votingClosesAt`, when tallies become public. Audit records cover votes, comments, hides, and configuration changes. The organizer audit endpoint is readable without a database client.
 - **Offline keying:** `VOTING_TOKEN_SECRET` is required at API startup and must be a stable, independent secret of at least 32 characters. It is never derived from `DATABASE_URL`. Compose supplies a stable, publicly known local/offline demo default so one-command boot works; production deployments must override it with a strong independently generated secret. Changing the secret invalidates OPEN tokens and changes EMAIL_GATED identity hashes.
+
+## T4B Judge Participation Records
+
+Printable certificates are generated as HTML from authoritative registration data and submitted team/project snapshots. DogFood does not create PDF files; browser print-to-PDF is available. A certificate describes stored participation only and does not claim attendance, winner status, placement, ranking, or verified real-world identity. Signed judge records contain an event ID, an event-specific pseudonymous subject ID, assignment and submitted-evaluation counts, issuance time, schema version, record ID, issuer key ID, and optional superseded record ID. They contain no score, review text, rubric detail, project name, display name, email, or community-voting data.
+
+The signing seed is the independent `JUDGE_RECORD_SIGNING_KEY_SEED`, a stable 32-byte Ed25519 seed encoded as 64 hexadecimal characters. Generate production material with `openssl rand -hex 32`; keep it outside the database and independent of `DATABASE_URL`, `VOTING_TOKEN_SECRET`, and `WEBHOOK_ENCRYPTION_KEY`. Startup fails when the setting is missing or malformed. Compose's stable public local/demo seed is not a production secret. See [JUDGE-RECORDS.md](JUDGE-RECORDS.md) for exact canonicalization and offline verification and [JUDGE-RECORD-KEYS.md](JUDGE-RECORD-KEYS.md) for the independent fingerprint trust anchor and rotation guidance. A signature verified against a live-served key proves consistency with that key, not which installation controls it.
+
+Judge records are persisted and append-only. Corrections add a newly signed record linked by `supersedesRecordId`; revocation adds a separately signed statement. Verification reports signature validity independently from ACTIVE, SUPERSEDED, or REVOKED lifecycle status. Previous public keys remain available after rotation so existing records remain verifiable.
+
+## T4A REST and Webhook Coverage
+
+Webhook coverage means every meaningful server-side/domain mutation exposed by
+the product REST API. Navigation, filtering, pagination, searches, ordinary
+reads, and local-only UI state do not emit webhooks. Authentication lifecycle
+operations (register, login, logout) are deliberately excluded. This is a
+documented T4A policy interpretation, not wording directly guaranteed by the
+official T4 specification. Covered mutations write a versioned outbox event in
+the same database transaction; delivery occurs only after commit. Webhook
+management and history use the existing session-cookie authorization. This
+initial REST API adds no machine-token credentials.
+
+Delivery is at least once: a receiver may see duplicates and must deduplicate by
+the stable delivery ID. Automatic retries use exponential backoff, a finite
+eight-attempt cycle, and jitter. Organizer replay starts a new retry cycle but
+reuses the same delivery ID and preserves attempt history. There is no global
+ordering guarantee across event types. See `WEBHOOKS.md` for the versioned
+payload and signature-verification contract.
+
+Webhook destinations must be public HTTPS addresses. Loopback, link-local,
+private, metadata, localhost/local/internal, reserved, and multicast targets are
+rejected at configuration time and again immediately before delivery. Redirects
+are not followed. LAN/private destinations are deliberately unsupported in
+T4A; this is an SSRF/security trade-off, not a development bypass.

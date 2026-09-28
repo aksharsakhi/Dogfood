@@ -269,7 +269,8 @@ export function JudgingOrganizer({ eventId }: { eventId: string }) {
       <h1>Judging setup and progress</h1>
       <p>
         <a href={`/events/${eventId}/manage`}>Event settings</a> ·{' '}
-        <a href={`/events/${eventId}`}>Event page</a>
+        <a href={`/events/${eventId}`}>Event page</a> ·{' '}
+        <a href={`/events/${eventId}/judging/records`}>Participation records</a>
       </p>
       {error && <p role="alert">{error}</p>}
       {notice && <p role="status">{notice}</p>}

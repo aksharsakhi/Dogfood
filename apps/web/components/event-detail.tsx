@@ -212,12 +212,17 @@ export function EventDetail({ eventId }: { eventId: string }) {
                   <a href={`/events/${eventId}/manage`}>Manage event</a> ·{' '}
                   <a href={`/events/${eventId}/judging`}>Manage judging</a>
                   {' · '}
+                  <a href={`/events/${eventId}/judging/records`}>
+                    Participation records
+                  </a>
+                  {' · '}
                   <a href={`/events/${eventId}/voting/manage`}>Manage voting</a>
                 </p>
               )}
               {judge && (
                 <p>
-                  <a href={`/events/${eventId}/judge`}>Judge workspace</a>
+                  <a href={`/events/${eventId}/judge`}>Judge workspace</a> ·{' '}
+                  <a href={`/events/${eventId}/records`}>Your records</a>
                 </p>
               )}
               {registrationLoaded && registration && (
@@ -232,6 +237,11 @@ export function EventDetail({ eventId }: { eventId: string }) {
               ) : registration?.status === 'APPROVED' ? (
                 <>
                   <p>Registered as a participant.</p>
+                  <p>
+                    <a href={`/events/${eventId}/records`}>
+                      View your participation records
+                    </a>
+                  </p>
                   <TeamPanel
                     eventId={eventId}
                     user={user}

@@ -18,7 +18,7 @@ The web proxy forwards the event-scoped OPEN cookie with a `/api/events/.../voti
 
 ## Relational boundaries
 
-All 36 models are in `prisma/schema.prisma`. UUIDs identify entities; natural join keys identify PlatformRole and JudgeExpertise. Decimal fields store scores, weights and money. Dates use PostgreSQL timestamptz; the event timezone is an IANA name that future event DTOs must validate. JSONB is limited to flexible registration metadata, score-run parameters and audit snapshots.
+All 45 models are in `prisma/schema.prisma`. UUIDs identify entities; natural join keys identify PlatformRole and JudgeExpertise. Decimal fields store scores, weights and money. Dates use PostgreSQL timestamptz; the event timezone is an IANA name that future event DTOs must validate. JSONB is limited to flexible registration metadata, score-run parameters, audit snapshots, and versioned webhook payloads.
 
 EventMembership supports multiple event roles. TeamMember carries eventId solely to enforce the partial unique index on `(eventId,userId) WHERE leftAt IS NULL`. Its composite FK guarantees that eventId matches Team. A departed member retains their row; rejoining the same team updates that membership. Full membership interval history belongs in audit events later.
 
@@ -49,6 +49,30 @@ Phase 4B implements the scoring, normalization, competition results, and CSV exp
 Success responses are typed resource JSON (no redundant envelope). Errors are `{code,message,details,requestId}`. The global filter sanitizes unexpected errors; request IDs are generated server-side and returned as `x-request-id`. Global DTO validation rejects unknown properties. Browser CORS uses one configured origin with credentials enabled for future sessions. Logging intentionally omits request payloads and tokens.
 
 `GET /health` is liveness and needs no database. `GET /ready` queries PostgreSQL with a two-second response deadline; failed readiness returns 503. Prisma connections are lazy, so database failure does not prevent liveness. Set PostgreSQL connection/pool timeouts in DATABASE_URL for deployment-specific bounds; the response deadline does not cancel the underlying query. Swagger lives at `/docs`, JSON at `/docs-json`.
+
+## REST mutation webhooks (T4A)
+
+Webhook scope is meaningful server-side/domain mutations exposed through the
+product REST API. Navigation, filters, searches, pagination, ordinary reads,
+and local-only UI state are excluded. Authentication lifecycle operations
+(register, login, logout) are also excluded by deliberate policy
+interpretation; this exclusion is not wording directly guaranteed by the T4
+specification. Mutations and compact versioned outbox events commit atomically.
+Delivery is asynchronous, durable in PostgreSQL, at-least-once, finite-retry,
+and does not alter committed domain state when a receiver fails.
+
+Organizer webhook REST routes use the existing session-cookie authorization;
+this initial REST API does not introduce API keys, bearer tokens, PATs, OAuth,
+or other machine credentials. Subscription secrets are independently random,
+encrypted at rest with `WEBHOOK_ENCRYPTION_KEY`, and revealed only at creation.
+Payloads omit credentials and private T3 abuse fingerprints. Public HTTPS
+destinations are DNS-checked when configured and before each send, pinned to the
+validated address, and never followed through redirects. Loopback, link-local,
+private, localhost/local/internal, reserved, multicast, and metadata targets
+are rejected. LAN-only integrations are intentionally unsupported in T4A.
+Consumers must deduplicate stable delivery IDs; replay reuses the original ID,
+and event types have no global ordering guarantee. See `WEBHOOKS.md` for the
+payload and signature contract.
 
 ## Dependencies and deployment
 

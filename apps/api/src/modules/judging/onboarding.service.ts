@@ -274,6 +274,18 @@ export class OnboardingService {
             : {}),
         },
       });
+      await this.audit.record(tx, {
+        action: 'JUDGE_PROFILE_UPDATED',
+        entityType: 'JudgeProfile',
+        entityId: profileId,
+        eventId,
+        actorUserId: p.userId,
+        metadata: { fields: Object.keys(dto) },
+        afterState: {
+          available: changed.available,
+          maxAssignments: changed.maxAssignments,
+        },
+      });
       return {
         id: changed.id,
         maxAssignments: changed.maxAssignments,
@@ -378,6 +390,12 @@ export class OnboardingService {
         entityId: conflictId,
         eventId,
         actorUserId: p.userId,
+        beforeState: {
+          judgeProfileId: conflict.judgeProfileId,
+          type: conflict.type,
+          teamId: conflict.teamId,
+          projectId: conflict.projectId,
+        },
       });
     });
   }
@@ -477,6 +495,14 @@ export class OnboardingService {
       await tx.rubric.update({
         where: { id: rubricId },
         data: { name: dto.name.trim() },
+      });
+      await this.audit.record(tx, {
+        action: 'RUBRIC_UPDATED',
+        entityType: 'Rubric',
+        entityId: rubricId,
+        eventId,
+        actorUserId: p.userId,
+        metadata: { version: rubric.version, fields: ['name', 'criteria'] },
       });
       return tx.rubric.findUniqueOrThrow({
         where: { id: rubricId },

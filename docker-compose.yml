@@ -23,6 +23,11 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-dogfood}:${POSTGRES_PASSWORD:-dogfood_dev}@postgres:5432/${POSTGRES_DB:-dogfood}?schema=public
       # Local/offline demo default only. Production must override with an independently generated secret.
       VOTING_TOKEN_SECRET: ${VOTING_TOKEN_SECRET:-dogfood-local-demo-voting-secret-not-for-production-2026}
+      # Independent stable local/demo key for encrypted webhook signing secrets. Production must override.
+      WEBHOOK_ENCRYPTION_KEY: ${WEBHOOK_ENCRYPTION_KEY:-dogfood-local-demo-webhook-encryption-key-not-for-production-2026}
+      # Stable local/demo Ed25519 signing seed only. Production must provide its own independent 32-byte seed.
+      JUDGE_RECORD_SIGNING_KEY_SEED: ${JUDGE_RECORD_SIGNING_KEY_SEED:-02940e92f45afb8024a031d0b91d0587c6191102468df2eb65a9f27d41e785e6}
+      NODE_ENV: ${NODE_ENV:-development}
       API_PORT: 4000
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:3000}
     ports:

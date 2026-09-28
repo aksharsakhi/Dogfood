@@ -555,6 +555,15 @@ export class EvaluationsService {
           actorUserId: p.userId,
           metadata: { assignmentId, rubricId: assignment.rubricId },
         });
+      } else {
+        await this.audit.record(tx, {
+          action: 'EVALUATION_DRAFT_SAVED',
+          entityType: 'Evaluation',
+          entityId: evaluation.id,
+          eventId,
+          actorUserId: p.userId,
+          metadata: { assignmentId, rubricId: assignment.rubricId },
+        });
       }
       return this.dto(await this.assigned(tx, p, eventId, assignmentId));
     });

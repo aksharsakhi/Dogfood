@@ -171,6 +171,45 @@ export class CommunityVotingService {
     }
   }
 
+  private async createIdentity(
+    eventId: string,
+    mode: VotingAccessMode,
+    data: Prisma.VotingIdentityUncheckedCreateInput,
+    actorUserId?: string,
+  ): Promise<Identity> {
+    return this.db.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Event" WHERE id = ${eventId}::uuid FOR UPDATE`;
+      const event = await tx.event.findUnique({ where: { id: eventId } });
+      if (!event || event.votingAccessMode !== mode)
+        fail(409, 'WRONG_VOTING_MODE', 'The voting access mode changed.');
+      const selector: Prisma.VotingIdentityWhereInput = {
+        eventId,
+        mode,
+        ...(data.userId ? { userId: data.userId } : {}),
+        ...(data.emailHash ? { emailHash: data.emailHash } : {}),
+        ...(data.openTokenHash ? { openTokenHash: data.openTokenHash } : {}),
+      };
+      const prior = await tx.votingIdentity.findFirst({
+        where: selector,
+        select: { id: true, userId: true, mode: true },
+      });
+      if (prior) return prior;
+      const created = await tx.votingIdentity.create({
+        data,
+        select: { id: true, userId: true, mode: true },
+      });
+      await this.audit.record(tx, {
+        action: 'VOTING_IDENTITY_CREATED',
+        entityType: 'VotingIdentity',
+        entityId: created.id,
+        eventId,
+        actorUserId,
+        afterState: { mode },
+      });
+      return created;
+    });
+  }
+
   private async resolveIdentity(
     eventId: string,
     request: FastifyRequest,
@@ -187,12 +226,12 @@ export class CommunityVotingService {
       const principal = await this.auth.resolve(request);
       if (!principal)
         fail(401, 'UNAUTHENTICATED', 'Authentication is required.');
-      const row = await this.db.votingIdentity.upsert({
-        where: { eventId_userId: { eventId, userId: principal.userId } },
-        create: { eventId, mode: 'AUTHENTICATED', userId: principal.userId },
-        update: {},
-        select: { id: true, userId: true, mode: true },
-      });
+      const row = await this.createIdentity(
+        eventId,
+        'AUTHENTICATED',
+        { eventId, mode: 'AUTHENTICATED', userId: principal.userId },
+        principal.userId,
+      );
       return { identity: row };
     }
     if (event.votingAccessMode === 'EMAIL_GATED') {
@@ -203,16 +242,11 @@ export class CommunityVotingService {
           'An email address is required for this event.',
         );
       const emailHash = this.hmac('email', normalizeEmail(dto.email));
-      const row = await this.db.votingIdentity.upsert({
-        where: { eventId_emailHash: { eventId, emailHash } },
-        create: {
-          eventId,
-          mode: 'EMAIL_GATED',
-          emailHash,
-          emailAcceptedAt: this.clock.now(),
-        },
-        update: {},
-        select: { id: true, userId: true, mode: true },
+      const row = await this.createIdentity(eventId, 'EMAIL_GATED', {
+        eventId,
+        mode: 'EMAIL_GATED',
+        emailHash,
+        emailAcceptedAt: this.clock.now(),
       });
       return { identity: row };
     }
@@ -253,9 +287,10 @@ export class CommunityVotingService {
     }
     const nonce = randomBytes(32).toString('base64url');
     const signature = this.hmac('open-token', `${eventId}:${nonce}`);
-    const row = await this.db.votingIdentity.create({
-      data: { eventId, mode: 'OPEN', openTokenHash: sha(nonce) },
-      select: { id: true, userId: true, mode: true },
+    const row = await this.createIdentity(eventId, 'OPEN', {
+      eventId,
+      mode: 'OPEN',
+      openTokenHash: sha(nonce),
     });
     return { identity: row, cookie: `${nonce}.${signature}` };
   }

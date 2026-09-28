@@ -564,9 +564,11 @@ describe('T3B public voting and abuse controls', () => {
     expect(
       await db.publicWriteBucket.count({ where: { eventId: f.eventId } }),
     ).toBe(0);
-    expect(await db.auditEvent.count({ where: { eventId: f.eventId } })).toBe(
-      0,
-    );
+    expect(
+      await db.auditEvent.count({
+        where: { eventId: f.eventId, action: 'VOTING_IDENTITY_CREATED' },
+      }),
+    ).toBe(1);
     await post(
       path(f.eventId, 'votes'),
       { projectId: f.projectIds[0] },

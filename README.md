@@ -17,8 +17,10 @@ The platform runs without third-party cloud dependencies. Offline cold runtime b
 ## Architecture & Documentation
 
 - [ARCHITECTURE.md](ARCHITECTURE.md): Architectural decisions, modular monolith boundaries, API conventions, and system lifecycle.
-- [DATA-MODEL.md](DATA-MODEL.md): Relational schema, 36 domain models, constraints, and database triggers.
+- [DATA-MODEL.md](DATA-MODEL.md): Relational schema, 45 domain models, constraints, and database triggers.
 - [JUDGING.md](JUDGING.md): Judging and scoring guarantees, CSV security, and the T3 voting integrity model and limitations.
+- [JUDGE-RECORDS.md](JUDGE-RECORDS.md): Printable certificate claims, signed judge-record payloads, canonicalization, and offline verification.
+- [JUDGE-RECORD-KEYS.md](JUDGE-RECORD-KEYS.md): Independently published local/demo signing-key fingerprint and rotation trust guidance.
 - [docs/OFFICIAL-FIXTURE-IMPORT.md](docs/OFFICIAL-FIXTURE-IMPORT.md): Fixture import semantics, deterministic UUIDs, and acceptance session token generation.
 
 ```text
@@ -26,7 +28,7 @@ apps/web/             Next.js shell, judge/organizer workspaces, public voting a
 apps/api/             NestJS/Fastify, identity, events, submissions, gallery, judging, voting, audit
 packages/contracts/   Shared REST wire types
 packages/shared/      Shared identity/authorization types
-prisma/               36 domain models, SQL migrations, deterministic seed, official fixture importer
+prisma/               45 domain models, SQL migrations, deterministic seed, official fixture importer
 fixtures/             Development fixture documentation
 tests/                Jest/Supertest, database invariants, Playwright workflows
 docs/                 Architecture, verification, and fixture import notes
@@ -116,19 +118,21 @@ During automatic Docker startup (or via `npm run db:import:official`), these det
 
 `.env.example` contains public development defaults:
 
-| Variable              | Purpose                                                                                                    |
-| --------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`        | Prisma PostgreSQL connection string                                                                        |
-| `VOTING_TOKEN_SECRET` | Required independent voting-credential key (at least 32 non-whitespace characters); stable across restarts |
-| `API_PORT`            | API listening port (default `4000`)                                                                        |
-| `WEB_ORIGIN`          | Allowed browser origin (default `http://localhost:3000`)                                                   |
-| `API_INTERNAL_URL`    | Server-side web -> API address (Compose sets `http://api:4000`)                                            |
-| `POSTGRES_USER`       | PostgreSQL user (default `dogfood`)                                                                        |
-| `POSTGRES_PASSWORD`   | PostgreSQL password (default `dogfood_dev`)                                                                |
-| `POSTGRES_DB`         | PostgreSQL database name (default `dogfood`)                                                               |
-| `NODE_ENV`            | Environment mode (`development`, `test`, or `production`)                                                  |
+| Variable                        | Purpose                                                                                                    |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                  | Prisma PostgreSQL connection string                                                                        |
+| `VOTING_TOKEN_SECRET`           | Required independent voting-credential key (at least 32 non-whitespace characters); stable across restarts |
+| `WEBHOOK_ENCRYPTION_KEY`        | Required independent stable key (32+ characters) protecting webhook signing secrets at rest                |
+| `JUDGE_RECORD_SIGNING_KEY_SEED` | Required independent stable 32-byte Ed25519 seed (64 hex characters) for signed judge records              |
+| `API_PORT`                      | API listening port (default `4000`)                                                                        |
+| `WEB_ORIGIN`                    | Allowed browser origin (default `http://localhost:3000`)                                                   |
+| `API_INTERNAL_URL`              | Server-side web -> API address (Compose sets `http://api:4000`)                                            |
+| `POSTGRES_USER`                 | PostgreSQL user (default `dogfood`)                                                                        |
+| `POSTGRES_PASSWORD`             | PostgreSQL password (default `dogfood_dev`)                                                                |
+| `POSTGRES_DB`                   | PostgreSQL database name (default `dogfood`)                                                               |
+| `NODE_ENV`                      | Environment mode (`development`, `test`, or `production`)                                                  |
 
-`docker-compose.yml` provides a stable, publicly known **local/offline demo** default for `VOTING_TOKEN_SECRET`, allowing zero-configuration startup. Production deployments must override it with a strong independently generated secret. Non-Docker startup fails immediately if the key is missing. Keep it stable across restarts or OPEN credentials and EMAIL_GATED identity hashes change. For custom configurations, copy `.env.example` to `.env` (which is gitignored) and set the key explicitly.
+`docker-compose.yml` provides stable, publicly known **local/offline demo** defaults for `VOTING_TOKEN_SECRET`, `WEBHOOK_ENCRYPTION_KEY`, and `JUDGE_RECORD_SIGNING_KEY_SEED`, allowing zero-configuration startup. Production deployments must override all three with strong, independently generated values. The public judge-record demo seed is rejected when `NODE_ENV=production`. Non-Docker startup fails immediately if a required key is missing or malformed. Keep each value stable across restarts; changing a signing seed causes key rotation while older records remain verifiable as long as their public keys remain in the database. For custom configurations, copy `.env.example` to `.env` (which is gitignored) and set all keys explicitly.
 
 ## T3 public voting status and limits
 
@@ -143,6 +147,8 @@ To run the application locally without Docker:
 ```bash
 cp .env.example .env
 export VOTING_TOKEN_SECRET="$(openssl rand -hex 32)"
+export WEBHOOK_ENCRYPTION_KEY="$(openssl rand -hex 32)"
+export JUDGE_RECORD_SIGNING_KEY_SEED="$(openssl rand -hex 32)"
 npm ci
 npm run db:generate
 npm run db:deploy
@@ -151,6 +157,10 @@ npm run dev
 ```
 
 `VOTING_TOKEN_SECRET` is an independent signing secret. Save this strong random value privately (for example, in `.env`) and reuse it across restarts so existing OPEN voting credentials remain valid. Generate a separate strong value for each real deployment; the publicly known Docker Compose demo default is not a production secret.
+
+`WEBHOOK_ENCRYPTION_KEY` is a separate independent key used to encrypt webhook signing secrets at rest. Save it privately and reuse it across restarts. Production must use a strong deployment-specific value; the Compose local/demo default is public and not a production secret.
+
+`JUDGE_RECORD_SIGNING_KEY_SEED` is an independent 32-byte Ed25519 seed. Keep it private and stable; never derive it from another credential or store it in the database. Startup rejects a missing/malformed value and rejects the public Compose demo value in production. See [JUDGE-RECORDS.md](JUDGE-RECORDS.md) and [JUDGE-RECORD-KEYS.md](JUDGE-RECORD-KEYS.md) for the payload, offline verification, fingerprint trust anchor, and rotation process.
 
 ### Static Quality Checks & Tests
 

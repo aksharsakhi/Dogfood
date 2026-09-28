@@ -1,6 +1,7 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
+  setupFiles: ['<rootDir>/apps/api/test/jest.setup.ts'],
   testTimeout: 30000,
   testMatch: ['<rootDir>/apps/api/test/phase4a.stage1.int.ts'],
   transformIgnorePatterns: ['/node_modules/(?!content-disposition/)'],

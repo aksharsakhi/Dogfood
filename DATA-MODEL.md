@@ -1,6 +1,6 @@
 # DogFood Relational Data Model
 
-This document describes the 36-model relational schema and its database invariants, with detail on judging, scoring, results, and T3 community voting.
+This document describes the 45-model relational schema and its database invariants, with detail on judging, scoring, results, T3 community voting, T4A webhooks, and T4B judge participation records.
 
 ---
 
@@ -23,6 +23,10 @@ erDiagram
   Event ||--o{ CommunityVote : "collects votes"
   Event ||--o{ ProjectComment : "hosts comments"
   Event ||--o{ PublicWriteBucket : "limits writes"
+  Event ||--o{ WebhookSubscription : "configures webhooks"
+  Event ||--o{ WebhookOutboxEvent : "records webhook events"
+  Event ||--o{ JudgeRecordSubject : "pseudonymizes judges"
+  Event ||--o{ JudgeParticipationRecord : "issues records"
 
   User ||--o{ EventMembership : "holds"
   User ||--o{ Session : "authenticates"
@@ -33,6 +37,8 @@ erDiagram
   JudgeProfile ||--o{ JudgeConflict : "declares"
   JudgeProfile ||--o{ JudgeAssignment : "receives"
   JudgeProfile ||--o{ JudgeScoreStats : "summarizes"
+  JudgeProfile ||--o{ JudgeRecordSubject : "has event subject"
+  JudgeProfile ||--o{ JudgeParticipationRecord : "is recorded"
 
   Team ||--o{ TeamMember : "includes"
   Team ||--o{ Project : "owns"
@@ -45,6 +51,10 @@ erDiagram
 
   VotingIdentity ||--o| CommunityVote : "casts"
   VotingIdentity ||--o{ ProjectComment : "writes"
+
+  WebhookSubscription ||--o{ WebhookDelivery : "receives deliveries"
+  WebhookOutboxEvent ||--o{ WebhookDelivery : "fans out"
+  WebhookDelivery ||--o{ WebhookDeliveryAttempt : "records attempts"
 
   Rubric ||--|{ RubricCriterion : "contains"
   Rubric ||--o{ AssignmentRun : "binds"
@@ -64,6 +74,13 @@ erDiagram
   ScoreRun ||--o{ ResultRun : "determines"
 
   ResultRun ||--o{ ProjectResult : "ranks"
+
+  JudgeRecordSigningKey ||--o{ JudgeParticipationRecord : "signs"
+  JudgeRecordSigningKey ||--o{ JudgeRecordRevocation : "signs revocations"
+  JudgeRecordKeyRotation }o--|| JudgeRecordSigningKey : "retires"
+  JudgeRecordSubject ||--o{ JudgeParticipationRecord : "pseudonymous subject"
+  JudgeParticipationRecord ||--o| JudgeRecordRevocation : "may be revoked"
+  JudgeParticipationRecord ||--o| JudgeParticipationRecord : "may supersede"
 ```
 
 ---
@@ -469,3 +486,19 @@ EMAIL_GATED enforces uniqueness of the submitted normalized email string per eve
 `ProjectComment` has the same event-scoped project and identity foreign keys, a 2,000-character `body`, `VISIBLE`/`HIDDEN` status, and moderation actor/time columns. A check requires the hidden status and moderation fields to agree. The public read filters to visible comments, pages by `(createdAt, id)`, and escapes returned text; the organizer hide action and its audit event are transactional. `PublicWriteBucket` uses `(eventId, action, subjectHash, windowStart)` as its primary key; atomic upserts count write attempts across processes and restarts. A check prevents negative counts. The limits are service policy: six vote attempts or twelve comment attempts per identity per UTC-aligned ten-minute bucket.
 
 `Event.votingAccessMode`, `votingOpensAt`, and `votingClosesAt` hold configuration. The identity-to-event composite foreign key locks the mode after the first identity. The service checks the half-open voting interval using its own UTC instant and hides tallies from non-organizers until close. The database does not itself enforce voting time, project submission eligibility, self-voting, ballot order, result visibility, or rate-limit thresholds; those are API policies. OPEN credentials identify browser tokens, not people. EMAIL_GATED records a submitted email string, not inbox control. Only AUTHENTICATED mode can reliably apply team-based self-vote rejection. `VotingEmailChallenge` is dormant and performs no email verification.
+
+## 10. Transactional Webhooks (T4A)
+
+`WebhookSubscription` stores an event-scoped organizer configuration: the public HTTPS destination, subscribed event types, active state, and the AES-256-GCM ciphertext, nonce, and authentication tag for its independently generated signing secret. The raw subscription secret is returned only when the subscription is created. The deployment-level `WEBHOOK_ENCRYPTION_KEY` remains outside PostgreSQL and must stay stable so stored subscription secrets remain decryptable after restart.
+
+`WebhookOutboxEvent` is the durable, versioned domain-event envelope. A covered mutation writes its `AuditEvent`, outbox row, and any matching `WebhookDelivery` rows in the same database transaction. A PostgreSQL trigger rejects updates and deletes after an outbox event commits. Outbox rows therefore form append-only evidence; delivery state changes occur only in the separate delivery tables.
+
+`WebhookDelivery` joins one subscription to one outbox event. Its unique `(subscriptionId, outboxEventId)` constraint guarantees one logical delivery identity for that subscription/event pair. Automatic retries and organizer replay reuse that row and delivery ID, while `WebhookDeliveryAttempt` appends uniquely numbered attempt history. Claim status, lease token/time, retry schedule, response status, and compact error code support at-least-once asynchronous delivery across API processes. Foreign keys use `RESTRICT`, and T4A defines no automatic purge, so subscriptions, outbox events, deliveries, and attempt history are retained unless a later explicit retention policy is introduced.
+
+## 11. Judge Participation Records (T4B)
+
+`JudgeRecordSigningKey` stores only the public key, fingerprint, creation time, and retirement time. Its database trigger prevents deleting key history or changing published key material; one-active-key enforcement uses a PostgreSQL partial unique index. The private Ed25519 seed is deployment configuration and is never stored in PostgreSQL.
+
+`JudgeRecordSubject` maps a judge profile to a random event-scoped pseudonym. Its unique `(eventId, judgeProfileId)` key keeps a judge's records linkable within one event without placing account identifiers in the public payload. `JudgeParticipationRecord` stores the exact canonical payload, signature, issuer key, counts, issuance time, and optional superseded record ID. Rows are append-only; a unique supersedes key permits at most one correction per prior record. `JudgeRecordRevocation` is a separate signed append-only statement with one revocation per record. `JudgeRecordKeyRotation` is an append-only public history entry containing both key IDs and fingerprints. Foreign keys restrict deletion of referenced keys, records, events, profiles, and subjects.
+
+Signature validity is computed from the persisted canonical payload and the record's historical public key. ACTIVE/SUPERSEDED/REVOKED status is derived from the append-only correction and revocation relations, not folded into the cryptographic result. Printable certificates are generated on demand from event registration and immutable submitted-snapshot/team-membership data; they are HTML, not persisted certificates or generated PDF files.
