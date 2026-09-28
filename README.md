@@ -26,6 +26,7 @@ The platform runs without third-party cloud dependencies. Offline cold runtime b
 - [docs/OFFICIAL-FIXTURE-IMPORT.md](docs/OFFICIAL-FIXTURE-IMPORT.md): Fixture import semantics, deterministic UUIDs, and acceptance session token generation.
 - [docs/EVENT-ARCHIVE.md](docs/EVENT-ARCHIVE.md): Organizer archive format, privacy, import workflow, provenance, and compatibility.
 - [docs/EMBEDDED-GALLERY.md](docs/EMBEDDED-GALLERY.md): Read-only iframe route, exact-origin configuration, CSP enforcement, and archive behavior.
+- [THREAT-MODEL.md](THREAT-MODEL.md): Security threat model, trust boundaries, abuse analysis (Sybil, ballot stuffing, scraping, collusion, deadlines), database invariants, and residual risks.
 
 ```text
 apps/web/             Next.js shell, judge/organizer workspaces, public voting and comments
