@@ -48,11 +48,28 @@ export async function configureApp(
     });
   const config = new DocumentBuilder()
     .setTitle('Dogfood API')
-    .setDescription('Hackathon platform API')
+    .setDescription(
+      'DogFood Hackathon Platform Authoritative REST API. Provides complete event management, submissions, judging, community voting, webhooks, signed participation records, and event archives.',
+    )
     .setVersion('0.2.0')
-    .addCookieAuth('dogfood_session')
+    .addCookieAuth('dogfood_session', {
+      type: 'apiKey',
+      in: 'cookie',
+      name: 'dogfood_session',
+      description:
+        'Session authentication cookie for organizers, judges, and participants',
+    })
     .build();
-  SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, config));
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('docs', app, document);
+  SwaggerModule.setup('api-docs', app, document);
+
+  const fastify = app.getHttpAdapter().getInstance();
+  fastify.get('/openapi.json', async (_request, reply) => {
+    reply
+      .header('content-type', 'application/json; charset=utf-8')
+      .send(document);
+  });
   app.enableShutdownHooks();
 }
 export async function createApp(webOrigin: string) {

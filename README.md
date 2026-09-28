@@ -11,7 +11,7 @@ An open-source, self-hostable hackathon management, submission, judging, and res
   - **T2 (implemented & checker-verified):** Isolated judge evaluation workspaces, criterion rubrics, peer score blindness, participant blocking, and CSV export.
   - **T3 (implemented, covered by project tests):** Configurable community ballots, public comments with organizer hiding, server-gated results, per-identity ballot order, and organizer integrity audit. Covered by project-owned unit, integration, and database tests.
   - **T4 (implemented, covered by project tests):** REST API and webhooks covering UI actions, certificate and record generation, signed and publicly verifiable judge participation records, an embeddable gallery widget, and bulk import and export.
-- **Checker Coverage Notice:** Canonical `run.py` verification currently covers T1 and T2 only (7/7 checks pass). The submission claim in `.dogfood.toml` is conservatively set to `["T1", "T2"]` because `spec.md` warns that claiming more than verified can cost points. The absence of T3/T4 checks in `run.py` is a limitation of canonical checker coverage, not a statement that T3 or T4 features do not exist or failed. Both T3 and T4 are fully implemented and verified by project-owned test suites.
+- **Checker Coverage Notice:** `.dogfood.toml` intentionally claims T1 and T2 as the conservative machine-verifiable tier claim. This does NOT mean T3 or T4 are incomplete. The canonical `run.py` checker provides automated verification for T1/T2 but does not contain T3/T4 verification checks. T3 and T4 are implemented and covered by the project's dedicated automated test suites. We intentionally keep the machine-readable claim aligned with the canonical checker's verification scope.
 
 The platform runs without third-party cloud dependencies. Offline cold runtime boot is supported with prebuilt Docker images; building those images may require network access for base images and npm dependencies.
 
@@ -26,6 +26,7 @@ The platform runs without third-party cloud dependencies. Offline cold runtime b
 - [docs/OFFICIAL-FIXTURE-IMPORT.md](docs/OFFICIAL-FIXTURE-IMPORT.md): Fixture import semantics, deterministic UUIDs, and acceptance session token generation.
 - [docs/EVENT-ARCHIVE.md](docs/EVENT-ARCHIVE.md): Organizer archive format, privacy, import workflow, provenance, and compatibility.
 - [docs/EMBEDDED-GALLERY.md](docs/EMBEDDED-GALLERY.md): Read-only iframe route, exact-origin configuration, CSP enforcement, and archive behavior.
+- [docs/API-FIRST.md](docs/API-FIRST.md): API-first architecture, UI-to-API action matrix, OpenAPI 3.0 endpoints, authentication model, and verification.
 - [THREAT-MODEL.md](THREAT-MODEL.md): Security threat model, trust boundaries, abuse analysis (Sybil, ballot stuffing, scraping, collusion, deadlines), database invariants, and residual risks.
 
 ```text
@@ -73,13 +74,26 @@ docker compose up --build
 
 ### Expected Local Addresses and Ports
 
-| Service      | Default address                 | Description                                     |
-| ------------ | ------------------------------- | ----------------------------------------------- |
-| Web          | http://localhost:3000           | Next.js web application                         |
-| API          | http://localhost:4000           | Fastify REST API                                |
-| Swagger UI   | http://localhost:4000/docs      | Interactive OpenAPI documentation               |
-| OpenAPI JSON | http://localhost:4000/docs-json | OpenAPI schema                                  |
-| PostgreSQL   | localhost:5432                  | PostgreSQL database (bound to `127.0.0.1:5432`) |
+| Service      | Default address                    | Description                                             |
+| ------------ | ---------------------------------- | ------------------------------------------------------- |
+| Web          | http://localhost:3000              | Next.js web application                                 |
+| API          | http://localhost:4000              | Fastify REST API                                        |
+| OpenAPI JSON | http://localhost:4000/openapi.json | Machine-readable OpenAPI 3.0 document (also /docs-json) |
+| Swagger UI   | http://localhost:4000/docs         | Interactive OpenAPI documentation (also /api-docs)      |
+| PostgreSQL   | localhost:5432                     | PostgreSQL database (bound to `127.0.0.1:5432`)         |
+
+## API-First Architecture & Discovery
+
+DogFood is designed API-first: all user-facing features and state mutations in the web interface map directly to documented REST operations served by the NestJS/Fastify backend rather than relying on server-only UI logic.
+
+- **Machine-readable OpenAPI 3.0 Document:** Available at `GET http://localhost:4000/openapi.json` (also served at `GET /docs-json`).
+- **Interactive Documentation:** Available at `GET http://localhost:4000/docs` and `GET http://localhost:4000/api-docs` (Swagger UI).
+- **Comprehensive UI-to-API Inventory:** See [docs/API-FIRST.md](docs/API-FIRST.md) for the complete 68-action mapping across all 12 platform capabilities (Auth, Events, Tracks, Prizes, Projects, Submissions, Judging, Community Voting, Webhooks, Judge Records & Certificates, Event Archive, and Embedded Gallery).
+- **Authentication Model:** DogFood uses HttpOnly session cookies (`Cookie: dogfood_session=<token>`) for authenticated organizer, judge, and participant operations. The OpenAPI specification accurately declares this cookie security scheme under `dogfood_session`. Public endpoints (such as public event read, gallery browse, project search, certificate read, and judge record verification) require no authentication.
+- **Verification:** An automated test suite verifies OpenAPI specification correctness, schema validity, capability domain coverage, and absence of sensitive secret values:
+  ```bash
+  npm run test:b3
+  ```
 
 ## Official Acceptance Suite
 

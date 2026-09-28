@@ -9,7 +9,7 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
-import { ApiCookieAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { FastifyReply } from 'fastify';
 import type { SessionPrincipal } from '@dogfood/shared';
 import { CurrentPrincipal } from '../../common/auth/current-principal';
@@ -27,6 +27,7 @@ export class EventArchiveController {
   ) {}
 
   @Get(':eventId/archive')
+  @ApiOperation({ summary: 'Export complete portable event archive package' })
   async export(
     @CurrentPrincipal() principal: SessionPrincipal,
     @Param('eventId', ParseUUIDPipe) eventId: string,
@@ -41,6 +42,22 @@ export class EventArchiveController {
   }
 
   @Post('archives/preview')
+  @ApiOperation({
+    summary: 'Preview portable event archive package before import',
+  })
+  @ApiBody({
+    description: 'Archive JSON payload wrapped in archive property',
+    schema: {
+      type: 'object',
+      required: ['archive'],
+      properties: {
+        archive: {
+          type: 'object',
+          description: 'Valid DogFood event archive package',
+        },
+      },
+    },
+  })
   preview(
     @CurrentPrincipal() principal: SessionPrincipal,
     @Body() body: unknown,
@@ -51,6 +68,27 @@ export class EventArchiveController {
   }
 
   @Post('archives/confirm')
+  @ApiOperation({
+    summary: 'Confirm and execute portable event archive import',
+  })
+  @ApiBody({
+    description:
+      'Archive confirmation payload with matching preview packageHash',
+    schema: {
+      type: 'object',
+      required: ['archive', 'packageHash'],
+      properties: {
+        archive: {
+          type: 'object',
+          description: 'Valid DogFood event archive package',
+        },
+        packageHash: {
+          type: 'string',
+          description: 'SHA-256 package hash verified during preview',
+        },
+      },
+    },
+  })
   confirm(
     @CurrentPrincipal() principal: SessionPrincipal,
     @Body() body: unknown,
