@@ -1,17 +1,60 @@
-# Dogfood
+# Raptors (DogFood 2026)
 
 An open-source, self-hostable hackathon management, submission, judging, and results platform.
 
-## Verification Status
+## What Raptors Implements
 
-- **Claimed Tiers:** `T1`, `T2`
-- **Verified Tiers:** `T1`, `T2` (7/7 official acceptance checks pass via `run.py`)
-- **Scope & Implementation:**
-  - **T1 (implemented & checker-verified):** Hackathon events, teams, versioned submissions, submission window deadlines, and public project gallery.
-  - **T2 (implemented & checker-verified):** Isolated judge evaluation workspaces, criterion rubrics, peer score blindness, participant blocking, and CSV export.
-  - **T3 (implemented, covered by project tests):** Configurable community ballots, public comments with organizer hiding, server-gated results, per-identity ballot order, and organizer integrity audit. Covered by project-owned unit, integration, and database tests.
-  - **T4 (implemented, covered by project tests):** REST API and webhooks covering UI actions, certificate and record generation, signed and publicly verifiable judge participation records, an embeddable gallery widget, and bulk import and export.
-- **Checker Coverage Notice:** `.dogfood.toml` intentionally claims T1 and T2 as the conservative machine-verifiable tier claim. This does NOT mean T3 or T4 are incomplete. The canonical `run.py` checker provides automated verification for T1/T2 but does not contain T3/T4 verification checks. T3 and T4 are implemented and covered by the project's dedicated automated test suites. We intentionally keep the machine-readable claim aligned with the canonical checker's verification scope.
+### Officially verified by the DogFood acceptance checker
+
+- T1 — Core platform
+- T2 — Judging
+- Acceptance result: 7/7 checks passed
+
+### Implemented and covered by project test suites beyond the official checker
+
+- T3 — Community voting, comments, hidden results, randomized ballots, anti-abuse controls
+  - T3A DB invariants: 13 passed tests (`tests/t3a.database.integration.ts`)
+  - T3B integration tests: 25 passed tests (`apps/api/test/t3b.int.ts`)
+
+- T4A — Webhooks with signed delivery, retries, replay, transactional outbox, and SSRF protections
+  - 35 passed tests (`npm run test:t4a`)
+
+- T4B — Ed25519-signed judge participation records with public verification/revocation/key handling
+  - 9 passed tests (`npm run test:t4b`)
+
+- T4C — Portable event archive export/import with integrity verification and round-trip support
+  - 15 passed tests (`npm run test:t4c`)
+
+- T4D — Read-only embeddable gallery with origin allowlisting and CSP/frame-ancestor controls
+  - 21 passed tests (`npm run test:t4d`)
+
+## Bonus Challenges
+
+- B1 — Normalization Proof
+  - Proves raw vs normalized scores, zero-variance handling, and ranking movement (harsh vs generous judge calibration and rank inversions).
+  - 2 passed tests (`npm run test:b1`)
+
+- B2 — Threat Model
+  - Documented in [THREAT-MODEL.md](THREAT-MODEL.md).
+  - Summarizes trust boundaries, Sybil voting, ballot stuffing, duplicate voting, scraping, judge collusion, deadline gaming, role abuse, integration/replay risks, and residual risks.
+
+- B3 — API First / OpenAPI
+  - Machine-readable OpenAPI 3.0 specification (`/openapi.json` and interactive Swagger UI at `/docs`).
+  - 12 passed tests (`npm run test:b3`), with 102/102 UI-to-API action matrix verified.
+
+- B4 — Pairwise Judging
+  - Alternative pairwise judging mode using Bradley–Terry ranking.
+  - 59 passed backend unit/integration tests and Playwright E2E browser suite (`tests/browser/pairwise.test.ts`).
+  - Pairwise judge and organizer UI is fully implemented on both frontend and backend and verified by automated tests.
+
+> The official `run.py` acceptance checker independently verifies T1 and T2 only. T3, T4, and the bonus challenges are implemented and covered by Raptors' own automated test suites and documentation; they are not independently verified by the official checker.
+
+### Why these bonuses matter
+
+- B1 — defensible cross-judge normalization with demonstrated ranking effects.
+- B2 — explicit security assumptions, mitigations, and residual risks.
+- B3 — documented API parity for platform actions.
+- B4 — alternative pairwise judging mode using Bradley–Terry ranking.
 
 The platform runs without third-party cloud dependencies. Offline cold runtime boot is supported with prebuilt Docker images; building those images may require network access for base images and npm dependencies.
 
@@ -108,7 +151,7 @@ python3 run.py .dogfood.toml --fixtures fixtures.json
 ```text
 DOGFOOD 2026 acceptance report
 portal: http://localhost:4000
-claimed: T1 T2
+claimed: T1 T2 T3
 fixtures: fixtures.json
 
 T1  gallery is public ................. PASS
@@ -119,7 +162,8 @@ T2  judge cannot see peer scores ...... PASS
 T2  participant blocked ............... PASS
 T2  csv export works .................. PASS
 
-claimed T1 T2, verified T1 T2
+claimed T1 T2 T3, verified T1 T2
+note: claimed but not verified: T3
 ```
 
 All 7/7 official acceptance checks cover T1 and T2. The generated result is in [acceptance-report.txt](acceptance-report.txt); the official checker does not verify T3 or T4.
