@@ -63,12 +63,19 @@ export const webhookTypes: Record<string, string> = {
   COMMUNITY_VOTE_FLAGGED: 'community.vote.flagged',
   PROJECT_COMMENT_POSTED: 'project.comment.posted',
   PROJECT_COMMENT_HIDDEN: 'project.comment.hidden',
+  PAIRWISE_RUN_PUBLISHED: 'pairwise.run.published',
+  PAIRWISE_COMPARISON_SUBMITTED: 'pairwise.comparison.submitted',
+  PAIRWISE_RUN_CLOSED: 'pairwise.run.closed',
   JUDGE_PARTICIPATION_RECORD_ISSUED: 'judge.participation.record.issued',
   JUDGE_PARTICIPATION_RECORD_REVOKED: 'judge.participation.record.revoked',
 };
 
 const safeMetadataKeys = new Set([
   'projectId',
+  'assignmentId',
+  'pairwiseRunId',
+  'winnerProjectId',
+  'loserProjectId',
   'submissionId',
   'judgeProfileId',
   'recordId',

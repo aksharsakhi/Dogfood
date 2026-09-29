@@ -3,7 +3,10 @@ module.exports = {
   testEnvironment: 'node',
   testTimeout: 180000,
   setupFiles: ['<rootDir>/apps/api/test/jest.setup.ts'],
-  testMatch: ['<rootDir>/apps/api/test/b41.*.ts'],
+  testMatch: [
+    '<rootDir>/apps/api/test/b41.*.ts',
+    '<rootDir>/apps/api/test/b42.*.ts',
+  ],
   transformIgnorePatterns: ['/node_modules/(?!content-disposition/)'],
   transform: {
     '^.+\\.[tj]sx?$': ['ts-jest', { tsconfig: 'tsconfig.test.json' }],

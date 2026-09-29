@@ -127,6 +127,38 @@ describe('B3: API First — OpenAPI Discovery and Coverage Verification', () => 
     expect(securityScheme?.name).toBe('dogfood_session');
   });
 
+  it('documents every protected pairwise operation and submit request schema', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/openapi.json')
+      .expect(200);
+    const doc = JSON.parse(response.text) as OpenApiDocument;
+    const prefix = '/events/{eventId}/judging/pairwise';
+    const operations: Array<[string, string]> = [
+      ['/runs', 'post'],
+      ['/runs', 'get'],
+      ['/runs/{runId}', 'get'],
+      ['/runs/{runId}/assignments/preview', 'post'],
+      ['/runs/{runId}/publish', 'post'],
+      ['/runs/{runId}/close', 'post'],
+      ['/runs/{runId}/progress', 'get'],
+      ['/workspace', 'get'],
+      ['/assignments/{assignmentId}/submit', 'post'],
+    ];
+    for (const [path, method] of operations) {
+      const operation = doc.paths[`${prefix}${path}`]?.[method];
+      expect(operation?.tags).toContain('Pairwise Judging');
+      expect(operation?.security).toEqual([{ cookie: [] }]);
+      expect(operation?.summary).toBeTruthy();
+    }
+    expect(
+      doc.paths[`${prefix}/runs/{runId}/publish`]?.post?.requestBody,
+    ).toBeDefined();
+    expect(
+      doc.paths[`${prefix}/assignments/{assignmentId}/submit`]?.post
+        ?.requestBody,
+    ).toBeDefined();
+  });
+
   function getOp(path: string, method: string): OpenApiOperation {
     const p = openapiDoc.paths[path];
     if (!p) throw new Error(`Path ${path} not found in OpenAPI spec`);
@@ -138,7 +170,7 @@ describe('B3: API First — OpenAPI Discovery and Coverage Verification', () => 
   it('covers all critical capability domains across paths and operations', () => {
     const paths = openapiDoc.paths;
     const pathKeys = Object.keys(paths);
-    expect(pathKeys.length).toBe(98);
+    expect(pathKeys.length).toBe(106);
 
     // 1. Identity & Authentication
     expect(paths['/auth/register']).toBeDefined();
@@ -300,9 +332,9 @@ describe('B3: API First — OpenAPI Discovery and Coverage Verification', () => 
       }
     }
 
-    expect(Object.keys(openapiDoc.paths).length).toBe(98);
-    expect(operationCount).toBe(119);
-    expect(observedTags.size).toBe(15);
+    expect(Object.keys(openapiDoc.paths).length).toBe(106);
+    expect(operationCount).toBe(128);
+    expect(observedTags.size).toBe(16);
   });
 
   it('ensures ordinary business routes continue functioning without regression', async () => {
@@ -646,7 +678,7 @@ describe('B3: API First — OpenAPI Discovery and Coverage Verification', () => 
       expect(unmatchedActions).toEqual([]);
     });
 
-    it('verifies all 90 rows in docs/API-FIRST.md match actual OpenAPI operations with 0 stale entries', () => {
+    it('verifies all 99 rows in docs/API-FIRST.md match actual OpenAPI operations with 0 stale entries', () => {
       const apiFirstContent = fs.readFileSync(
         path.resolve(__dirname, '../../../docs/API-FIRST.md'),
         'utf-8',
@@ -674,7 +706,7 @@ describe('B3: API First — OpenAPI Discovery and Coverage Verification', () => 
         }
       }
 
-      expect(tableLines.length).toBe(90);
+      expect(tableLines.length).toBe(99);
 
       const staleEntries: string[] = [];
 
