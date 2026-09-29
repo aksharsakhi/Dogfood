@@ -106,6 +106,11 @@ export interface GalleryProject {
   demoUrl: string | null;
   submittedAt: string;
 }
+export class ApiFailure extends Error {
+  constructor(public readonly error: ApiError) {
+    super(`${error.code}: ${error.message}`);
+  }
+}
 export async function api<T>(
   path: string,
   options?: { method?: string; body?: object },
@@ -120,7 +125,7 @@ export async function api<T>(
   const data: unknown = await response.json();
   if (!response.ok) {
     const error = data as ApiError;
-    throw new Error(`${error.code}: ${error.message}`);
+    throw new ApiFailure(error);
   }
   return data as T;
 }

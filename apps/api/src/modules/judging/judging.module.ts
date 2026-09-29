@@ -9,6 +9,7 @@ import { BatchService } from './batch.service';
 import { ScoringService } from './scoring.service';
 import { CsvExportService } from './csv-export.service';
 import { PairwiseController } from '../pairwise/pairwise.controller';
+import { PairwiseRankingService } from '../pairwise/ranking.service';
 import { PairwiseService } from '../pairwise/pairwise.service';
 import { IdentityModule } from '../identity/identity.module';
 @Module({
@@ -25,6 +26,7 @@ import { IdentityModule } from '../identity/identity.module';
     ScoringService,
     CsvExportService,
     PairwiseService,
+    PairwiseRankingService,
   ],
   exports: [OnboardingService, ScoringService, CsvExportService],
 })

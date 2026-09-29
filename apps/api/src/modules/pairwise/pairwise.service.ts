@@ -333,6 +333,30 @@ export class PairwiseService {
     };
     for (const assignment of assignments)
       parent.set(root(assignment.projectBId), root(assignment.projectAId));
+    const evidenceParent = new Map(
+      snapshots.map((s) => [s.projectId, s.projectId]),
+    );
+    const evidenceRoot = (id: string): string => {
+      let current = id;
+      while (evidenceParent.get(current) !== current)
+        current = evidenceParent.get(current)!;
+      return current;
+    };
+    for (const assignment of assignments.filter(
+      (a) => a.status === 'SUBMITTED',
+    ))
+      evidenceParent.set(
+        evidenceRoot(assignment.projectBId),
+        evidenceRoot(assignment.projectAId),
+      );
+    const evidenceComponents = new Map<string, string[]>();
+    for (const { projectId } of snapshots) {
+      const key = evidenceRoot(projectId);
+      evidenceComponents.set(key, [
+        ...(evidenceComponents.get(key) ?? []),
+        projectId,
+      ]);
+    }
     const degrees = [...degree.values()];
     return {
       runId,
@@ -344,6 +368,15 @@ export class PairwiseService {
         ? (submitted / assignments.length) * 100
         : 0,
       pinnedProjectCount: snapshots.length,
+      evidenceGraph: {
+        componentCount: evidenceComponents.size,
+        graphConnected: snapshots.length >= 2 && evidenceComponents.size === 1,
+        components: [...evidenceComponents.values()]
+          .map((c) => c.sort())
+          .sort((a, b) => a[0]!.localeCompare(b[0]!)),
+        comparisonCount: submitted,
+        projectCount: snapshots.length,
+      },
       perJudge: [...perJudge]
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([judgeProfileId, counts]) => ({ judgeProfileId, ...counts })),
@@ -394,13 +427,14 @@ export class PairwiseService {
         judgeProfileId: judge.id,
         run: { eventId, status: { in: ['PUBLISHED', 'CLOSED'] } },
       },
-      include: { comparison: true },
+      include: { comparison: true, run: { select: { status: true } } },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     });
     const rows = await Promise.all(
       assignments.map(async (assignment) => ({
         assignmentId: assignment.id,
         runId: assignment.runId,
+        runStatus: assignment.run.status,
         status: assignment.status,
         projectA: await this.material(
           this.db,

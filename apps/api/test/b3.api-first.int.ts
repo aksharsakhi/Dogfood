@@ -26,6 +26,7 @@ const origin = 'http://localhost:3000';
 let app: NestFastifyApplication;
 
 interface OpenApiOperation {
+  responses?: Record<string, unknown>;
   tags?: string[];
   security?: Array<Record<string, unknown>>;
   summary?: string;
@@ -39,6 +40,7 @@ interface OpenApiDocument {
   openapi: string;
   info: { title: string; version: string; description?: string };
   components?: {
+    schemas?: Record<string, unknown>;
     securitySchemes?: Record<
       string,
       { type?: string; in?: string; name?: string }
@@ -141,6 +143,9 @@ describe('B3: API First — OpenAPI Discovery and Coverage Verification', () => 
       ['/runs/{runId}/publish', 'post'],
       ['/runs/{runId}/close', 'post'],
       ['/runs/{runId}/progress', 'get'],
+      ['/runs/{runId}/rankings', 'post'],
+      ['/runs/{runId}/rankings', 'get'],
+      ['/rankings/{rankingRunId}', 'get'],
       ['/workspace', 'get'],
       ['/assignments/{assignmentId}/submit', 'post'],
     ];
@@ -159,6 +164,31 @@ describe('B3: API First — OpenAPI Discovery and Coverage Verification', () => 
     ).toBeDefined();
   });
 
+  it('documents ranking request, response and failure schemas on every protected ranking route', () => {
+    const prefix = '/events/{eventId}/judging/pairwise';
+    for (const [path, method, status] of [
+      ['/runs/{runId}/rankings', 'post', '201'],
+      ['/runs/{runId}/rankings', 'get', '200'],
+      ['/rankings/{rankingRunId}', 'get', '200'],
+    ]) {
+      const op = getOp(`${prefix}${path}`, method!);
+      expect(op.security).toEqual([{ cookie: [] }]);
+      expect(op.responses?.[status!]).toBeDefined();
+      for (const code of ['400', '401', '403', '404'])
+        expect(op.responses?.[code]).toBeDefined();
+    }
+    expect(
+      getOp(`${prefix}/runs/{runId}/rankings`, 'post').requestBody,
+    ).toBeDefined();
+    expect(
+      getOp(`${prefix}/runs/{runId}/rankings`, 'post').responses?.['409'],
+    ).toBeDefined();
+    expect(openapiDoc.components?.schemas?.PairwiseRankingDto).toBeDefined();
+    expect(
+      openapiDoc.components?.schemas?.PairwiseProjectResultDto,
+    ).toBeDefined();
+  });
+
   function getOp(path: string, method: string): OpenApiOperation {
     const p = openapiDoc.paths[path];
     if (!p) throw new Error(`Path ${path} not found in OpenAPI spec`);
@@ -170,7 +200,7 @@ describe('B3: API First — OpenAPI Discovery and Coverage Verification', () => 
   it('covers all critical capability domains across paths and operations', () => {
     const paths = openapiDoc.paths;
     const pathKeys = Object.keys(paths);
-    expect(pathKeys.length).toBe(106);
+    expect(pathKeys.length).toBe(108);
 
     // 1. Identity & Authentication
     expect(paths['/auth/register']).toBeDefined();
@@ -332,8 +362,8 @@ describe('B3: API First — OpenAPI Discovery and Coverage Verification', () => 
       }
     }
 
-    expect(Object.keys(openapiDoc.paths).length).toBe(106);
-    expect(operationCount).toBe(128);
+    expect(Object.keys(openapiDoc.paths).length).toBe(108);
+    expect(operationCount).toBe(131);
     expect(observedTags.size).toBe(16);
   });
 
@@ -678,7 +708,7 @@ describe('B3: API First — OpenAPI Discovery and Coverage Verification', () => 
       expect(unmatchedActions).toEqual([]);
     });
 
-    it('verifies all 99 rows in docs/API-FIRST.md match actual OpenAPI operations with 0 stale entries', () => {
+    it('verifies all 102 rows in docs/API-FIRST.md match actual OpenAPI operations with 0 stale entries', () => {
       const apiFirstContent = fs.readFileSync(
         path.resolve(__dirname, '../../../docs/API-FIRST.md'),
         'utf-8',
@@ -706,7 +736,7 @@ describe('B3: API First — OpenAPI Discovery and Coverage Verification', () => 
         }
       }
 
-      expect(tableLines.length).toBe(99);
+      expect(tableLines.length).toBe(102);
 
       const staleEntries: string[] = [];
 

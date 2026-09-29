@@ -6,6 +6,7 @@ module.exports = {
   testMatch: [
     '<rootDir>/apps/api/test/b41.*.ts',
     '<rootDir>/apps/api/test/b42.*.ts',
+    '<rootDir>/apps/api/test/b43.*.ts',
   ],
   transformIgnorePatterns: ['/node_modules/(?!content-disposition/)'],
   transform: {

@@ -452,3 +452,67 @@ private, metadata, localhost/local/internal, reserved, and multicast targets are
 rejected at configuration time and again immediately before delivery. Redirects
 are not followed. LAN/private destinations are deliberately unsupported in
 T4A; this is an SSRF/security trade-off, not a development bypass.
+
+## Pairwise Mode
+
+Judges open **Judge workspace → Open Pairwise Mode**, compare two projects,
+choose the stronger one, and confirm their final choice. The cards show the
+exact immutable submission versions pinned when the organizer published the
+run. Later project edits or submissions cannot replace those cards. Submitted
+winner/loser comparisons are immutable and become read-only. Judges cannot
+view other judges' choices or organizer rankings.
+
+Organizers open **Judging → Pairwise Mode**, create a draft, preview feasibility
+and assignments, then publish. Refresh progress to see completion, judge
+workload, and connectivity of **submitted evidence**. A connected assignment
+plan alone is not enough to rank. Published and closed runs can be ranked;
+closing prevents further comparisons. This path is independent of rubric and
+Z-score judging.
+
+Global ranking uses only **BRADLEY_TERRY_RIDGE_V1**:
+
+- `P(i > j) = sigmoid(beta_i - beta_j)`.
+- Fixed ridge regularization `lambda = 0.01` prevents separated evidence from
+  diverging. Tolerance is `1e-8`, with at most 200 iterations.
+- Disconnected undirected evidence blocks global ranking, with component and
+  isolated-project diagnostics. No ordering is invented between components.
+- A directed win graph that is not strongly connected raises a separation and
+  regularization-sensitivity diagnostic; connected evidence can still produce
+  finite estimates using ridge.
+- Strengths are canonicalized to six decimal places. Equal canonical strengths
+  have equal competition ranks, such as **1, 1, 3**. Project-ID display ordering
+  never changes tied ranks. Stored noncanonical strengths have eight decimals.
+
+For example, **A beats B, B beats C, A beats C** yields **A > B > C**. The evidence
+is connected but separated: C never wins, so ridge keeps the estimates finite.
+With only **A beats B** and **C beats D**, there are two components and no global
+ranking is available. With **A beats C** and **B beats C**, A and B share rank 1
+and C has rank 3.
+
+Ranking runs and project results are immutable historical snapshots. Reads
+compare the current evidence hash with the stored hash to expose `stale` and
+`currentComparisonCount`. New evidence creates a new ranking; old results never
+change. Identical evidence reuses the existing ranking, following ScoreRun's
+idempotency policy, including concurrent requests, and emits no duplicate
+logical webhook.
+
+The B4.1 hash utility commits to the run ID, frozen algorithm/version/lambda,
+and sorted immutable comparison IDs with winner/loser IDs. The run ID identifies
+its permanently frozen project/submission mapping. Solver projects come only
+from `PairwiseRunProjectSnapshot`, never live project fields or latest
+submissions. The append-only `PAIRWISE_RANKING_CREATED` audit stores the exact
+comparison and project IDs for historical replay. Ranking state, project
+results, audit, `pairwise.ranking.created` outbox event, and subscription deliveries
+commit atomically under the same run lock used by submission and closure.
+Webhook schema version 1 uses the existing outbox worker, stable delivery IDs,
+retry and replay semantics. The existing migrations provide all required tables
+and immutability constraints; B4.3 adds no schema migration.
+
+Ranking API operations (organizer cookie authentication):
+
+- `POST /events/:eventId/judging/pairwise/runs/:runId/rankings`
+- `GET /events/:eventId/judging/pairwise/runs/:runId/rankings`
+- `GET /events/:eventId/judging/pairwise/rankings/:rankingRunId`
+
+All are documented in `/openapi.json`; judge submission and lifecycle actions
+reuse the B4.2 API. No solver tuning controls are exposed.

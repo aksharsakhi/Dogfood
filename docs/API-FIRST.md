@@ -10,7 +10,7 @@ DogFood serves both machine-readable and interactive API specifications directly
 
 - **Machine-Readable OpenAPI 3.0 Specification**:
   `GET /openapi.json`
-  Returns the complete, authoritative OpenAPI 3.0 JSON specification containing all 98 paths, 119 operations, schemas, parameters, and security requirements.
+  Returns the complete, authoritative OpenAPI 3.0 JSON specification containing all 108 paths, 131 operations, schemas, parameters, and security requirements.
 - **Interactive Swagger Documentation**:
   `GET /docs` (and alias `GET /api-docs`)
   Renders the interactive Swagger UI interface enabling developers and judges to browse, inspect, and test API operations directly in the browser.
@@ -88,6 +88,9 @@ The following audit maps every user action across the web application interface 
 | **Public Gallery**    | Browse project gallery                     |    `GET`    | `/events/:eventId/gallery`                                              | `GalleryController`              | Public              |  **COVERED**   |
 | **Public Gallery**    | View public project page                   |    `GET`    | `/events/:eventId/gallery/:projectId`                                   | `GalleryController`              | Public              |  **COVERED**   |
 | **Judging Setup**     | Create rubric                              |   `POST`    | `/events/:eventId/judging/rubrics`                                      | `JudgingController`              | Organizer           |  **COVERED**   |
+| **Pairwise Judging**  | Run Bradley–Terry ranking                  |   `POST`    | `/events/:eventId/judging/pairwise/runs/:runId/rankings`                | `PairwiseController`             | Organizer           |  **COVERED**   |
+| **Pairwise Judging**  | List historical rankings and staleness     |    `GET`    | `/events/:eventId/judging/pairwise/runs/:runId/rankings`                | `PairwiseController`             | Organizer           |  **COVERED**   |
+| **Pairwise Judging**  | Inspect ranking results and diagnostics    |    `GET`    | `/events/:eventId/judging/pairwise/rankings/:rankingRunId`              | `PairwiseController`             | Organizer           |  **COVERED**   |
 | **Pairwise Judging**  | Create draft run                           |   `POST`    | `/events/:eventId/judging/pairwise/runs`                                | `PairwiseController`             | Organizer           |  **COVERED**   |
 | **Pairwise Judging**  | List runs                                  |    `GET`    | `/events/:eventId/judging/pairwise/runs`                                | `PairwiseController`             | Organizer           |  **COVERED**   |
 | **Pairwise Judging**  | Inspect run                                |    `GET`    | `/events/:eventId/judging/pairwise/runs/:runId`                         | `PairwiseController`             | Organizer           |  **COVERED**   |
@@ -197,6 +200,6 @@ The automated test verifies:
 - Machine-readable specification served at `/openapi.json` (200 OK, JSON content-type).
 - Interactive documentation served at `/docs` and `/api-docs` (200 OK, HTML).
 - Accurate representation of the cookie-based session security scheme.
-- Complete coverage of all capability domains across 106 paths and 128 operations.
+- Complete coverage of all capability domains across 108 paths and 131 operations.
 - Verification that no sensitive environment secrets or credentials appear in output.
 - Unaltered behavior of core business and health endpoints.

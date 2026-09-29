@@ -6,6 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import type { FastifyReply, FastifyRequest } from 'fastify';
+import { DomainError } from './domain-error';
 import type { ApiError } from '@dogfood/contracts';
 import { Prisma } from '@prisma/client';
 @Catch()
@@ -63,7 +64,15 @@ export class ApiExceptionFilter implements ExceptionFilter {
             : typeof messages === 'string'
               ? messages
               : 'The request could not be processed.',
-      details: Array.isArray(messages) ? messages : null,
+      details:
+        exception instanceof DomainError &&
+        typeof response === 'object' &&
+        response !== null &&
+        'details' in response
+          ? response.details
+          : Array.isArray(messages)
+            ? messages
+            : null,
       requestId: request.id,
     };
     if (status >= 500) {

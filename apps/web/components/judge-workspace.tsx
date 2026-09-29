@@ -61,6 +61,9 @@ export function JudgeWorkspace({ eventId }: { eventId: string }) {
     <main>
       <h1>Judge workspace</h1>
       <p>
+        <a href={`/events/${eventId}/judge/pairwise`}>Open Pairwise Mode</a>
+      </p>
+      <p>
         <a href={`/events/${eventId}`}>Event page</a>
       </p>
       {error && <p role="alert">{error}</p>}

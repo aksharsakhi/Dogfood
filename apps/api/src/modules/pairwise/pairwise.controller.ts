@@ -18,6 +18,8 @@ import {
 import type { SessionPrincipal } from '@dogfood/shared';
 import { SessionAuthGuard } from '../../common/auth/session-auth.guard';
 import { CurrentPrincipal } from '../../common/auth/current-principal';
+import { PairwiseRankingService } from './ranking.service';
+import { PairwiseRankingDto } from './ranking.dto';
 import { PairwiseService } from './pairwise.service';
 import { PairwisePublishDto, PairwiseSubmitDto } from './pairwise.dto';
 
@@ -30,7 +32,69 @@ import { PairwisePublishDto, PairwiseSubmitDto } from './pairwise.dto';
 export class PairwiseController {
   constructor(
     @Inject(PairwiseService) private readonly service: PairwiseService,
+    @Inject(PairwiseRankingService)
+    private readonly rankings: PairwiseRankingService,
   ) {}
+
+  @Post('runs/:runId/rankings')
+  @ApiOperation({
+    summary:
+      'Create an immutable Bradley–Terry ranking, or reuse identical evidence',
+  })
+  @ApiBody({
+    required: false,
+    schema: { type: 'object', additionalProperties: false },
+  })
+  @ApiResponse({
+    status: 201,
+    type: PairwiseRankingDto,
+    description: 'Ranking created or identical historical ranking reused',
+  })
+  @ApiResponse({ status: 400, description: 'Invalid identifier' })
+  @ApiResponse({ status: 404, description: 'Run not found in this event' })
+  @ApiResponse({
+    status: 409,
+    description:
+      'Run not published, disconnected evidence, or solver failure. Disconnected details contain componentCount, components (project IDs), isolatedProjects, comparisonCount and projectCount.',
+  })
+  createRanking(
+    @CurrentPrincipal() p: SessionPrincipal,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('runId', ParseUUIDPipe) runId: string,
+  ) {
+    return this.rankings.create(p, eventId, runId);
+  }
+
+  @Get('runs/:runId/rankings')
+  @ApiOperation({
+    summary:
+      'List historical pairwise rankings with current evidence staleness',
+  })
+  @ApiResponse({ status: 200, type: [PairwiseRankingDto] })
+  @ApiResponse({ status: 400, description: 'Invalid identifier' })
+  @ApiResponse({ status: 404, description: 'Run not found in this event' })
+  listRankings(
+    @CurrentPrincipal() p: SessionPrincipal,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('runId', ParseUUIDPipe) runId: string,
+  ) {
+    return this.rankings.list(p, eventId, runId);
+  }
+
+  @Get('rankings/:rankingRunId')
+  @ApiOperation({
+    summary: 'Read an immutable pairwise ranking with frozen project names',
+  })
+  @ApiResponse({ status: 200, type: PairwiseRankingDto })
+  @ApiResponse({ status: 400, description: 'Invalid identifier' })
+  @ApiResponse({ status: 404, description: 'Ranking not found in this event' })
+  rankingDetail(
+    @CurrentPrincipal() p: SessionPrincipal,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('rankingRunId', ParseUUIDPipe) rankingRunId: string,
+  ) {
+    return this.rankings.detail(p, eventId, rankingRunId);
+  }
 
   @Post('runs')
   @ApiOperation({ summary: 'Create a draft pairwise run' })

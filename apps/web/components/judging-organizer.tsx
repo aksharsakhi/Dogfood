@@ -1,5 +1,6 @@
 'use client';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { PairwiseOrganizer } from './pairwise-organizer';
 import { api, message } from '../lib/client';
 
 type Judge = {
@@ -1010,6 +1011,7 @@ export function JudgingOrganizer({ eventId }: { eventId: string }) {
           ))}
         </div>
       </section>
+      <PairwiseOrganizer eventId={eventId} />
     </main>
   );
 }
