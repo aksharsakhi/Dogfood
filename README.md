@@ -4,10 +4,11 @@ An open-source, self-hostable hackathon management, submission, judging, and res
 
 ## 🌐 Live Production Deployment
 
-- **Live Web Portal**: [http://13.51.169.132](http://13.51.169.132)
-- **API Documentation & Swagger UI**: [http://13.51.169.132/docs](http://13.51.169.132/docs)
-- **OpenAPI 3.0 Specification**: [http://13.51.169.132/openapi.json](http://13.51.169.132/openapi.json)
-- **Health & Readiness Probe**: [http://13.51.169.132/ready](http://13.51.169.132/ready)
+- **Live Web Portal (HTTPS)**: [https://gain-journey-charger-remain.trycloudflare.com](https://gain-journey-charger-remain.trycloudflare.com)
+- **Direct Server IP**: [http://13.51.169.132](http://13.51.169.132)
+- **API Documentation & Swagger UI**: [https://gain-journey-charger-remain.trycloudflare.com/docs](https://gain-journey-charger-remain.trycloudflare.com/docs)
+- **OpenAPI 3.0 Specification**: [https://gain-journey-charger-remain.trycloudflare.com/openapi.json](https://gain-journey-charger-remain.trycloudflare.com/openapi.json)
+- **Health & Readiness Probe**: [https://gain-journey-charger-remain.trycloudflare.com/ready](https://gain-journey-charger-remain.trycloudflare.com/ready)
 - **Self-Hosting Operations**: See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) and [docs/LIVE-DEPLOYMENT.md](docs/LIVE-DEPLOYMENT.md)
 
 
@@ -79,6 +80,12 @@ The platform runs without third-party cloud dependencies. Offline cold runtime b
 - [docs/EVENT-ARCHIVE.md](docs/EVENT-ARCHIVE.md): Organizer archive format, privacy, import workflow, provenance, and compatibility.
 - [docs/EMBEDDED-GALLERY.md](docs/EMBEDDED-GALLERY.md): Read-only iframe route, exact-origin configuration, CSP enforcement, and archive behavior.
 - [docs/API-FIRST.md](docs/API-FIRST.md): API-first architecture, UI-to-API action matrix, OpenAPI 3.0 endpoints, authentication model, and verification.
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md): Self-hosting operations manual, reverse proxy configuration (Nginx/Caddy), and systemd daemon management.
+- [docs/DEPLOYMENT-ARCHITECTURE.md](docs/DEPLOYMENT-ARCHITECTURE.md): Production network topology and request routing lifecycle.
+- [docs/AWS-SETUP.md](docs/AWS-SETUP.md): AWS EC2 instance provisioning, security groups, and storage optimization guide.
+- [docs/LIVE-DEPLOYMENT.md](docs/LIVE-DEPLOYMENT.md): Live deployment registry, server specifications, and test credentials.
+- [docs/PRODUCTION-SECURITY.md](docs/PRODUCTION-SECURITY.md): Secret isolation, production guards, and key rotation policies.
+- [docs/VERIFICATION-EVALUATION.md](docs/VERIFICATION-EVALUATION.md): Acceptance suite results audit and tier verification report.
 - [THREAT-MODEL.md](THREAT-MODEL.md): Security threat model, trust boundaries, abuse analysis (Sybil, ballot stuffing, scraping, collusion, deadlines), database invariants, and residual risks.
 
 ```text
@@ -90,6 +97,8 @@ prisma/               51 domain models, SQL migrations, deterministic seed, offi
 fixtures/             Development fixture documentation
 tests/                Jest/Supertest, database invariants, Playwright workflows
 docs/                 Architecture, verification, and fixture import notes
+deploy/               Nginx, Caddy, and systemd production service definitions
+scripts/              Verification smoke tests, health watchdog, and tunnel utilities
 Dockerfile            Multi-target container build (API & Web)
 docker-compose.yml    PostgreSQL -> API/migrations/fixtures -> Web
 ```
@@ -160,7 +169,7 @@ python3 run.py .dogfood.toml --fixtures fixtures.json
 ```text
 DOGFOOD 2026 acceptance report
 portal: http://localhost:4000
-claimed: T1 T2 T3
+claimed: T1 T2 T3 T4
 fixtures: fixtures.json
 
 T1  gallery is public ................. PASS
@@ -171,8 +180,8 @@ T2  judge cannot see peer scores ...... PASS
 T2  participant blocked ............... PASS
 T2  csv export works .................. PASS
 
-claimed T1 T2 T3, verified T1 T2
-note: claimed but not verified: T3
+claimed T1 T2 T3 T4, verified T1 T2
+note: claimed but not verified: T3 T4
 ```
 
 All 7/7 official acceptance checks cover T1 and T2. The generated result is in [acceptance-report.txt](acceptance-report.txt); the official checker does not verify T3 or T4.
