@@ -187,8 +187,27 @@ export function ProjectPanel({
     }
   }
   return (
-    <section>
+    <section className="raptors-card-panel">
       <h2>Projects and submissions</h2>
+      <div className="raptors-lifecycle-stepper" aria-label="Builder lifecycle">
+        <span className="raptors-step done">✓ 1. Registered</span>
+        <span className={`raptors-step ${teamId ? 'done' : 'active'}`}>
+          {teamId ? '✓ ' : ''}2. Team Formed
+        </span>
+        <span
+          className={`raptors-step ${selected ? 'done' : teamId ? 'active' : ''}`}
+        >
+          {selected ? '✓ ' : ''}3. Project Created
+        </span>
+        <span
+          className={`raptors-step ${latest ? 'done' : draft ? 'active' : ''}`}
+        >
+          {latest ? '✓ ' : draft ? '● ' : ''}4. Draft Saved
+        </span>
+        <span className={`raptors-step ${latest ? 'done' : ''}`}>
+          {latest ? '✓ 5. Submitted' : '5. Final Submission'}
+        </span>
+      </div>
       <p>
         Submission deadline:{' '}
         {submissionClosesAt
@@ -306,10 +325,19 @@ export function ProjectPanel({
                 Latest submitted:{' '}
                 {latest ? `v${latest.version} — ${latest.title}` : 'None'}
               </p>
-              <ul>
+              <ul className="raptors-version-list">
                 {history.map((s) => (
-                  <li key={s.id}>
-                    v{s.version} — {s.status} — {s.title}
+                  <li key={s.id} className="raptors-version-item">
+                    <span>
+                      v{s.version} — {s.status} — {s.title}
+                    </span>
+                    <span
+                      className={`raptors-version-tag ${s.status === 'DRAFT' ? 'raptors-version-tag-draft' : ''}`}
+                    >
+                      {s.status === 'SUBMITTED'
+                        ? 'Immutable Snapshot'
+                        : s.status}
+                    </span>
                   </li>
                 ))}
               </ul>

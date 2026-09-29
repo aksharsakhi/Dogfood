@@ -87,7 +87,7 @@ export function EmbedSettings({
     }
   }
   return (
-    <section aria-label="Embed settings">
+    <section aria-label="Embed settings" className="raptors-card-panel">
       <h2>Embeddable gallery</h2>
       <p>
         The gallery embed is read-only and shows only publicly visible projects.
@@ -130,7 +130,10 @@ export function EmbedSettings({
       {url && (
         <>
           <p>
-            Embed URL: <a href={url}>{url}</a>
+            Embed URL:{' '}
+            <a href={url} style={{ wordBreak: 'break-all' }}>
+              {url}
+            </a>
           </p>
           <label>
             Iframe snippet

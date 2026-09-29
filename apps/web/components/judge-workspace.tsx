@@ -58,32 +58,131 @@ export function JudgeWorkspace({ eventId }: { eventId: string }) {
     );
   }, [eventId]);
   return (
-    <main>
-      <h1>Judge workspace</h1>
-      <p>
+    <main className="raptors-workspace-container">
+      <div className="raptors-workspace-header">
+        <span className="raptors-workspace-eyebrow">Judge Portal</span>
+        <div className="raptors-workspace-title-row">
+          <h1 className="raptors-workspace-title">Judge workspace</h1>
+        </div>
+        <p className="raptors-workspace-desc">
+          Your assigned evaluation workload. Grade projects against the official
+          rubric criteria and submit verified scores.
+        </p>
+      </div>
+
+      <nav className="raptors-workspace-tabs" aria-label="Judge navigation">
+        <a href={`/events/${eventId}`} className="raptors-tab-item">
+          Event Overview
+        </a>
+        <a
+          href={`/events/${eventId}/judge`}
+          className="raptors-tab-item active"
+        >
+          My Assignments
+        </a>
+        <a
+          href={`/events/${eventId}/judge/pairwise`}
+          className="raptors-tab-item"
+        >
+          Open Pairwise Mode
+        </a>
+        <a href={`/events/${eventId}/records`} className="raptors-tab-item">
+          My Records
+        </a>
+      </nav>
+
+      <p style={{ display: 'none' }}>
         <a href={`/events/${eventId}/judge/pairwise`}>Open Pairwise Mode</a>
       </p>
-      <p>
+      <p style={{ display: 'none' }}>
         <a href={`/events/${eventId}`}>Event page</a>
       </p>
+
       {error && <p role="alert">{error}</p>}
       {workspace && (
         <>
-          <p>
+          <p style={{ margin: '0 0 16px', color: '#666', fontSize: '13px' }}>
             {workspace.assigned} assigned · {workspace.completed} completed ·{' '}
             {workspace.draft} draft · {workspace.remaining} remaining
           </p>
-          <ul>
-            {workspace.assignments.map((a) => (
-              <li key={a.assignmentId}>
-                <a href={`/events/${eventId}/judge/${a.assignmentId}`}>
-                  {a.projectName ?? a.title}
-                </a>{' '}
-                · {a.status}
-              </li>
-            ))}
-          </ul>
-          {workspace.assigned === 0 && <p>No published assignments yet.</p>}
+          <div className="raptors-stat-grid">
+            <div className="raptors-stat-card">
+              <div className="raptors-stat-card-num">{workspace.assigned}</div>
+              <div className="raptors-stat-card-label">Assigned Projects</div>
+            </div>
+            <div className="raptors-stat-card">
+              <div className="raptors-stat-card-num">{workspace.completed}</div>
+              <div className="raptors-stat-card-label">Completed Reviews</div>
+            </div>
+            <div className="raptors-stat-card">
+              <div className="raptors-stat-card-num">{workspace.draft}</div>
+              <div className="raptors-stat-card-label">Draft Reviews</div>
+            </div>
+            <div className="raptors-stat-card">
+              <div className="raptors-stat-card-num">{workspace.remaining}</div>
+              <div className="raptors-stat-card-label">Remaining Reviews</div>
+            </div>
+          </div>
+
+          <section className="raptors-card-panel" aria-label="Assignments List">
+            <div className="raptors-card-header">
+              <h2 className="raptors-card-title">Assigned Submissions</h2>
+              <span className="raptors-rubric-tag">
+                {workspace.assignments.length} total
+              </span>
+            </div>
+
+            <ul
+              style={{
+                listStyle: 'none',
+                padding: 0,
+                margin: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
+              }}
+            >
+              {workspace.assignments.map((a) => (
+                <li
+                  key={a.assignmentId}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '14px 18px',
+                    background: '#fafaf7',
+                    border: '1px solid #e4e4dc',
+                    borderRadius: '8px',
+                  }}
+                >
+                  <a
+                    href={`/events/${eventId}/judge/${a.assignmentId}`}
+                    style={{
+                      fontWeight: 600,
+                      color: '#090909',
+                      textDecoration: 'none',
+                    }}
+                  >
+                    {a.projectName ?? a.title}
+                  </a>
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      padding: '3px 8px',
+                      borderRadius: '4px',
+                      background:
+                        a.status === 'COMPLETED' ? '#090909' : '#eaeae4',
+                      color: a.status === 'COMPLETED' ? '#ffffff' : '#333333',
+                    }}
+                  >
+                    {a.status}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            {workspace.assigned === 0 && <p>No published assignments yet.</p>}
+          </section>
         </>
       )}
     </main>
@@ -144,81 +243,208 @@ export function JudgeEvaluation({
     }
   }
   return (
-    <main>
-      <p>
-        <a href={`/events/${eventId}/judge`}>Judge workspace</a>
-      </p>
-      <h1>Evaluate assignment</h1>
+    <main className="raptors-workspace-container">
+      <div style={{ marginBottom: '16px' }}>
+        <a
+          href={`/events/${eventId}/judge`}
+          className="raptors-text-link"
+          style={{ fontSize: '13.5px', fontWeight: 600 }}
+        >
+          ← Back to Judge workspace
+        </a>
+      </div>
+      <div className="raptors-workspace-header">
+        <span className="raptors-workspace-eyebrow">Rubric Evaluation</span>
+        <h1 className="raptors-workspace-title">Evaluate assignment</h1>
+      </div>
       {error && <p role="alert">{error}</p>}
       {notice && <p role="status">{notice}</p>}
       {detail && (
         <>
-          <h2>{detail.submission.projectName ?? detail.submission.title}</h2>
-          <p>
-            Submission v{detail.submission.version}: {detail.submission.title}
-          </p>
-          {detail.submission.projectTagline && (
-            <p>{detail.submission.projectTagline}</p>
-          )}
-          <p>{detail.submission.description}</p>
-          {detail.submission.repositoryUrl && (
-            <p>
-              <a href={detail.submission.repositoryUrl}>Repository</a>
-            </p>
-          )}
-          {detail.submission.demoUrl && (
-            <p>
-              <a href={detail.submission.demoUrl}>Demo</a>
-            </p>
-          )}
-          <h2>
-            {detail.rubric.name} v{detail.rubric.version}
-          </h2>
-          <p>Status: {detail.evaluation?.status ?? 'NOT_STARTED'}</p>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void save(false);
-            }}
+          <section
+            className="raptors-card-panel"
+            aria-label="Project Information"
           >
-            {detail.rubric.criteria.map((criterion) => (
-              <label key={criterion.id}>
-                {criterion.name} · weight {criterion.weight} ·{' '}
-                {criterion.minScore}–{criterion.maxScore}
-                {criterion.description && <span>{criterion.description}</span>}
-                <input
-                  type="number"
-                  step="0.0001"
-                  min={criterion.minScore}
-                  max={criterion.maxScore}
-                  value={scores[criterion.id] ?? ''}
+            <div className="raptors-card-header">
+              <h2>
+                {detail.submission.projectName ?? detail.submission.title}
+              </h2>
+              <span className="raptors-rubric-tag">
+                Submission v{detail.submission.version}
+              </span>
+            </div>
+            <p style={{ fontWeight: 600, color: '#333333' }}>
+              Submission v{detail.submission.version}: {detail.submission.title}
+            </p>
+            {detail.submission.projectTagline && (
+              <p style={{ fontStyle: 'italic', color: '#666666' }}>
+                {detail.submission.projectTagline}
+              </p>
+            )}
+            <p style={{ lineHeight: '1.6', margin: '14px 0' }}>
+              {detail.submission.description}
+            </p>
+            <div className="raptors-action-row">
+              {detail.submission.repositoryUrl && (
+                <a
+                  href={detail.submission.repositoryUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="raptors-btn-secondary btn-secondary"
+                  style={{ textDecoration: 'none' }}
+                >
+                  View Repository ↗
+                </a>
+              )}
+              {detail.submission.demoUrl && (
+                <a
+                  href={detail.submission.demoUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="raptors-btn-secondary btn-secondary"
+                  style={{ textDecoration: 'none' }}
+                >
+                  Live Demo ↗
+                </a>
+              )}
+            </div>
+          </section>
+
+          <section className="raptors-card-panel" aria-label="Rubric Scoring">
+            <div className="raptors-card-header">
+              <h2>
+                {detail.rubric.name} v{detail.rubric.version}
+              </h2>
+              <span
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  padding: '3px 8px',
+                  borderRadius: '4px',
+                  background:
+                    detail.evaluation?.status === 'SUBMITTED'
+                      ? '#090909'
+                      : '#eaeae4',
+                  color:
+                    detail.evaluation?.status === 'SUBMITTED'
+                      ? '#ffffff'
+                      : '#333333',
+                }}
+              >
+                Status: {detail.evaluation?.status ?? 'NOT_STARTED'}
+              </span>
+            </div>
+
+            {detail.evaluation?.status === 'SUBMITTED' && (
+              <div className="raptors-immutable-banner">
+                <span>
+                  ✓ Evaluation submitted — read-only immutable snapshot.
+                </span>
+              </div>
+            )}
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void save(false);
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '16px',
+                  marginBottom: '20px',
+                }}
+              >
+                {detail.rubric.criteria.map((criterion) => (
+                  <div key={criterion.id} className="raptors-rubric-card">
+                    <div className="raptors-rubric-header">
+                      <span className="raptors-rubric-name">
+                        {criterion.name}
+                      </span>
+                      <div className="raptors-rubric-meta">
+                        <span className="raptors-rubric-tag">
+                          Weight {criterion.weight}
+                        </span>
+                        <span className="raptors-rubric-tag">
+                          Range {criterion.minScore}–{criterion.maxScore}
+                        </span>
+                      </div>
+                    </div>
+                    {criterion.description && (
+                      <p
+                        style={{
+                          fontSize: '13px',
+                          color: '#666666',
+                          margin: '4px 0 10px',
+                        }}
+                      >
+                        {criterion.description}
+                      </p>
+                    )}
+                    <label style={{ marginTop: '8px' }}>
+                      <span
+                        style={{
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          color: '#444444',
+                        }}
+                      >
+                        Score ({criterion.minScore}–{criterion.maxScore})
+                      </span>
+                      <input
+                        type="number"
+                        step="0.0001"
+                        min={criterion.minScore}
+                        max={criterion.maxScore}
+                        value={scores[criterion.id] ?? ''}
+                        disabled={detail.evaluation?.status === 'SUBMITTED'}
+                        onChange={(e) =>
+                          setScores((old) => ({
+                            ...old,
+                            [criterion.id]: e.target.value,
+                          }))
+                        }
+                        style={{ maxWidth: '240px' }}
+                      />
+                    </label>
+                  </div>
+                ))}
+              </div>
+
+              <label style={{ marginBottom: '20px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 600 }}>
+                  Evaluation Comments
+                </span>
+                <textarea
+                  value={comments}
+                  rows={4}
+                  placeholder="Provide qualitative feedback and notes for the participant and organizers..."
                   disabled={detail.evaluation?.status === 'SUBMITTED'}
-                  onChange={(e) =>
-                    setScores((old) => ({
-                      ...old,
-                      [criterion.id]: e.target.value,
-                    }))
-                  }
+                  onChange={(e) => setComments(e.target.value)}
                 />
               </label>
-            ))}
-            <label>
-              Comments{' '}
-              <textarea
-                value={comments}
-                disabled={detail.evaluation?.status === 'SUBMITTED'}
-                onChange={(e) => setComments(e.target.value)}
-              />
-            </label>
-            {detail.evaluation?.status !== 'SUBMITTED' && (
-              <>
-                <button type="submit">Save draft</button>{' '}
-                <button type="button" onClick={() => void save(true)}>
-                  Submit evaluation
-                </button>
-              </>
-            )}
-          </form>
+
+              {detail.evaluation?.status !== 'SUBMITTED' && (
+                <div className="raptors-action-row">
+                  <button
+                    type="submit"
+                    className="raptors-btn-secondary btn-secondary"
+                  >
+                    Save draft
+                  </button>
+                  <button
+                    type="button"
+                    className="raptors-btn-primary btn-primary"
+                    onClick={() => void save(true)}
+                  >
+                    Submit evaluation
+                  </button>
+                </div>
+              )}
+            </form>
+          </section>
         </>
       )}
     </main>

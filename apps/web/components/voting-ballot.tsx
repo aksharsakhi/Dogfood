@@ -92,7 +92,7 @@ export function VotingBallot({ eventId }: { eventId: string }) {
   }
 
   return (
-    <main>
+    <main className="raptors-workspace-container">
       <p className="eyebrow">Community choice</p>
       <h1>Cast your vote</h1>
       <p>

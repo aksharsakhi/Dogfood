@@ -84,12 +84,38 @@ export function PairwiseJudge({ eventId }: { eventId: string }) {
   const submitted = !!assignment?.comparison;
   const chosen = assignment?.comparison?.winnerProjectId ?? winner;
   return (
-    <main>
-      <p>
+    <main className="raptors-workspace-container">
+      <div className="raptors-workspace-header">
+        <span className="raptors-workspace-eyebrow">Peer Comparison Arena</span>
+        <div className="raptors-workspace-title-row">
+          <h1 className="raptors-workspace-title">Pairwise Mode</h1>
+        </div>
+        <p className="raptors-workspace-desc">
+          Compare the two pinned submissions. Your final choice is immutable.
+        </p>
+      </div>
+
+      <nav className="raptors-workspace-tabs" aria-label="Judge navigation">
+        <a href={`/events/${eventId}`} className="raptors-tab-item">
+          Event Overview
+        </a>
+        <a href={`/events/${eventId}/judge`} className="raptors-tab-item">
+          My Assignments
+        </a>
+        <a
+          href={`/events/${eventId}/judge/pairwise`}
+          className="raptors-tab-item active"
+        >
+          Open Pairwise Mode
+        </a>
+        <a href={`/events/${eventId}/records`} className="raptors-tab-item">
+          My Records
+        </a>
+      </nav>
+
+      <p style={{ display: 'none' }}>
         <a href={`/events/${eventId}/judge`}>Judge workspace</a>
       </p>
-      <h1>Pairwise Mode</h1>
-      <p>Compare the two pinned submissions. Your final choice is immutable.</p>
       {error && <p role="alert">{error}</p>}
       {!workspace && !error && <p role="status">Loading pairwise workspace…</p>}
       <button

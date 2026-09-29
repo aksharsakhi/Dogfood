@@ -100,21 +100,55 @@ export function JudgeRecordManager({ eventId }: { eventId: string }) {
   }
 
   return (
-    <main>
-      <h1>Participation records</h1>
-      <p>
-        Records describe stored DogFood registration, team membership,
-        submissions, assignments, and submitted evaluations. They do not attest
-        attendance, winners, placements, or real-world identity.
-      </p>
-      <p>
+    <main className="raptors-workspace-container">
+      <div className="raptors-workspace-header">
+        <span className="raptors-workspace-eyebrow">
+          Trust & Cryptographic Records
+        </span>
+        <div className="raptors-workspace-title-row">
+          <h1 className="raptors-workspace-title">Participation records</h1>
+        </div>
+        <p className="raptors-workspace-desc">
+          Records describe stored DogFood registration, team membership,
+          submissions, assignments, and submitted evaluations.
+        </p>
+      </div>
+
+      <nav className="raptors-workspace-tabs" aria-label="Organizer navigation">
+        <a href={`/events/${eventId}`} className="raptors-tab-item">
+          Overview
+        </a>
+        <a href={`/events/${eventId}/manage`} className="raptors-tab-item">
+          Settings
+        </a>
+        <a href={`/events/${eventId}/judging`} className="raptors-tab-item">
+          Judging & Scoring
+        </a>
+        <a
+          href={`/events/${eventId}/judging/records`}
+          className="raptors-tab-item active"
+        >
+          Signed Records
+        </a>
+        <a
+          href={`/events/${eventId}/voting/manage`}
+          className="raptors-tab-item"
+        >
+          Voting
+        </a>
+        <a href={`/events/${eventId}/gallery`} className="raptors-tab-item">
+          Gallery
+        </a>
+      </nav>
+
+      <p style={{ display: 'none' }}>
         <a href={`/events/${eventId}/judging`}>Judging</a> ·{' '}
         <a href={`/events/${eventId}`}>Event page</a>
       </p>
       {notice && <p role="status">{notice}</p>}
       {error && <p role="alert">{error}</p>}
 
-      <section aria-label="Signed judge records">
+      <section aria-label="Signed judge records" className="raptors-card-panel">
         <h2>Signed judge participation</h2>
         <form onSubmit={(event) => void issue(event)}>
           <label>
@@ -175,7 +209,10 @@ export function JudgeRecordManager({ eventId }: { eventId: string }) {
         )}
       </section>
 
-      <section aria-label="Participant certificates">
+      <section
+        aria-label="Participant certificates"
+        className="raptors-card-panel"
+      >
         <h2>Participant records</h2>
         <form onSubmit={(event) => void participantCertificate(event)}>
           <label>

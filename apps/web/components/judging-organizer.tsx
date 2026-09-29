@@ -266,16 +266,61 @@ export function JudgingOrganizer({ eventId }: { eventId: string }) {
   const judgeName = (id: string) =>
     judges.find((j) => j.id === id)?.displayName ?? id;
   return (
-    <main>
-      <h1>Judging setup and progress</h1>
-      <p>
+    <main className="raptors-workspace-container">
+      <div className="raptors-workspace-header">
+        <span className="raptors-workspace-eyebrow">
+          Organizer Control Center
+        </span>
+        <div className="raptors-workspace-title-row">
+          <h1 className="raptors-workspace-title">
+            Judging setup and progress
+          </h1>
+        </div>
+        <p className="raptors-workspace-desc">
+          Configure evaluation rubrics, declare conflict restrictions, allocate
+          balanced peer reviews, and inspect normalized scoring.
+        </p>
+      </div>
+
+      <nav className="raptors-workspace-tabs" aria-label="Organizer navigation">
+        <a href={`/events/${eventId}`} className="raptors-tab-item">
+          Overview
+        </a>
+        <a href={`/events/${eventId}/manage`} className="raptors-tab-item">
+          Settings
+        </a>
+        <a
+          href={`/events/${eventId}/judging`}
+          className="raptors-tab-item active"
+        >
+          Judging & Scoring
+        </a>
+        <a
+          href={`/events/${eventId}/judging/records`}
+          className="raptors-tab-item"
+        >
+          Signed Records
+        </a>
+        <a
+          href={`/events/${eventId}/voting/manage`}
+          className="raptors-tab-item"
+        >
+          Voting
+        </a>
+        <a href={`/events/${eventId}/gallery`} className="raptors-tab-item">
+          Gallery
+        </a>
+      </nav>
+
+      <p style={{ display: 'none' }}>
         <a href={`/events/${eventId}/manage`}>Event settings</a> ·{' '}
         <a href={`/events/${eventId}`}>Event page</a> ·{' '}
         <a href={`/events/${eventId}/judging/records`}>Participation records</a>
       </p>
+
       {error && <p role="alert">{error}</p>}
       {notice && <p role="status">{notice}</p>}
-      <section aria-label="Judges">
+      <section aria-label="Judges" className="raptors-card-panel">
         <h2>Judges</h2>
         <form onSubmit={(e) => void invite(e)}>
           <label>
@@ -298,7 +343,7 @@ export function JudgingOrganizer({ eventId }: { eventId: string }) {
           ))}
         </ul>
       </section>
-      <section aria-label="Rubrics">
+      <section aria-label="Rubrics" className="raptors-card-panel">
         <h2>Rubric</h2>
         <form onSubmit={(e) => void saveRubric(e)}>
           <label>
@@ -386,7 +431,7 @@ export function JudgingOrganizer({ eventId }: { eventId: string }) {
           </button>
         )}
       </section>
-      <section aria-label="Conflicts">
+      <section aria-label="Conflicts" className="raptors-card-panel">
         <h2>Conflicts</h2>
         <form onSubmit={(e) => void declareConflict(e)}>
           <label>
@@ -440,7 +485,7 @@ export function JudgingOrganizer({ eventId }: { eventId: string }) {
           ))}
         </ul>
       </section>
-      <section aria-label="Assignments">
+      <section aria-label="Assignments" className="raptors-card-panel">
         <h2>Assignments</h2>
         <label>
           Reviews per submission{' '}
@@ -552,7 +597,7 @@ export function JudgingOrganizer({ eventId }: { eventId: string }) {
           </div>
         )}
       </section>
-      <section aria-label="Judging progress">
+      <section aria-label="Judging progress" className="raptors-card-panel">
         <h2>Progress</h2>
         <button onClick={() => void run(load)}>Refresh progress</button>
         {progress && (
@@ -588,7 +633,10 @@ export function JudgingOrganizer({ eventId }: { eventId: string }) {
         )}
       </section>
 
-      <section aria-label="Scoring and Normalization">
+      <section
+        aria-label="Scoring and Normalization"
+        className="raptors-card-panel"
+      >
         <h2>Scoring (Z_SCORE_V1)</h2>
         <div style={{ marginBottom: '1rem' }}>
           <button
@@ -611,58 +659,61 @@ export function JudgingOrganizer({ eventId }: { eventId: string }) {
         {scoreRuns.length === 0 ? (
           <p>No score runs yet.</p>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Run ID</th>
-                <th>Method</th>
-                <th>Created</th>
-                <th>Evaluations</th>
-                <th>Freshness</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {scoreRuns.map((sr) => (
-                <tr key={sr.id}>
-                  <td>
-                    <code>{sr.id.slice(0, 8)}...</code>
-                  </td>
-                  <td>
-                    {sr.method} {sr.methodVersion}
-                  </td>
-                  <td>{new Date(sr.createdAt).toLocaleString()}</td>
-                  <td>{sr.evaluationCount}</td>
-                  <td>
-                    <span
-                      style={{
-                        fontWeight: 'bold',
-                        color: sr.freshness === 'CURRENT' ? 'green' : 'orange',
-                      }}
-                    >
-                      {sr.freshness}
-                    </span>
-                  </td>
-                  <td>{sr.status}</td>
-                  <td>
-                    <button
-                      onClick={() =>
-                        void run(async () => {
-                          const res = await api<ScoreRunDetail>(
-                            `${base}/scoring/runs/${sr.id}`,
-                          );
-                          setSelectedScoreRun(res);
-                        })
-                      }
-                    >
-                      View details
-                    </button>
-                  </td>
+          <div className="raptors-table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Run ID</th>
+                  <th>Method</th>
+                  <th>Created</th>
+                  <th>Evaluations</th>
+                  <th>Freshness</th>
+                  <th>Status</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {scoreRuns.map((sr) => (
+                  <tr key={sr.id}>
+                    <td>
+                      <code>{sr.id.slice(0, 8)}...</code>
+                    </td>
+                    <td>
+                      {sr.method} {sr.methodVersion}
+                    </td>
+                    <td>{new Date(sr.createdAt).toLocaleString()}</td>
+                    <td>{sr.evaluationCount}</td>
+                    <td>
+                      <span
+                        style={{
+                          fontWeight: 'bold',
+                          color:
+                            sr.freshness === 'CURRENT' ? '#16a34a' : '#555555',
+                        }}
+                      >
+                        {sr.freshness}
+                      </span>
+                    </td>
+                    <td>{sr.status}</td>
+                    <td>
+                      <button
+                        onClick={() =>
+                          void run(async () => {
+                            const res = await api<ScoreRunDetail>(
+                              `${base}/scoring/runs/${sr.id}`,
+                            );
+                            setSelectedScoreRun(res);
+                          })
+                        }
+                      >
+                        View details
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
 
         {selectedScoreRun && (
@@ -701,45 +752,47 @@ export function JudgingOrganizer({ eventId }: { eventId: string }) {
               </div>
             )}
             <h4>Project scores</h4>
-            <table>
-              <thead>
-                <tr>
-                  <th>Project ID</th>
-                  <th>Raw average</th>
-                  <th>Normalized score</th>
-                  <th>Submitted / Required</th>
-                  <th>Coverage</th>
-                </tr>
-              </thead>
-              <tbody>
-                {selectedScoreRun.projectScores.map((ps) => (
-                  <tr key={ps.id}>
-                    <td>
-                      <code>{ps.projectId.slice(0, 8)}...</code>
-                    </td>
-                    <td>{Number(ps.rawAverage).toFixed(2)}</td>
-                    <td>{Number(ps.aggregatedScore).toFixed(6)}</td>
-                    <td>
-                      {ps.evaluationCount} / {ps.requiredCount}
-                    </td>
-                    <td>
-                      <span
-                        style={{
-                          color: ps.coverageComplete ? 'green' : 'red',
-                        }}
-                      >
-                        {ps.coverageComplete ? 'Complete' : 'Incomplete'}
-                      </span>
-                    </td>
+            <div className="raptors-table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Project ID</th>
+                    <th>Raw average</th>
+                    <th>Normalized score</th>
+                    <th>Submitted / Required</th>
+                    <th>Coverage</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {selectedScoreRun.projectScores.map((ps) => (
+                    <tr key={ps.id}>
+                      <td>
+                        <code>{ps.projectId.slice(0, 8)}...</code>
+                      </td>
+                      <td>{Number(ps.rawAverage).toFixed(2)}</td>
+                      <td>{Number(ps.aggregatedScore).toFixed(6)}</td>
+                      <td>
+                        {ps.evaluationCount} / {ps.requiredCount}
+                      </td>
+                      <td>
+                        <span
+                          style={{
+                            color: ps.coverageComplete ? 'green' : 'red',
+                          }}
+                        >
+                          {ps.coverageComplete ? 'Complete' : 'Incomplete'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </section>
 
-      <section aria-label="Results and Rankings">
+      <section aria-label="Results and Rankings" className="raptors-card-panel">
         <h2>Results</h2>
         <div style={{ marginBottom: '1rem' }}>
           <label>
@@ -857,53 +910,57 @@ export function JudgingOrganizer({ eventId }: { eventId: string }) {
         {resultRuns.length === 0 ? (
           <p>No result runs yet.</p>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>ResultRun ID</th>
-                <th>ScoreRun ID</th>
-                <th>Generated</th>
-                <th>Coverage</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {resultRuns.map((rr) => (
-                <tr key={rr.id}>
-                  <td>
-                    <code>{rr.id.slice(0, 8)}...</code>
-                  </td>
-                  <td>
-                    <code>{rr.scoreRunId.slice(0, 8)}...</code>
-                  </td>
-                  <td>{new Date(rr.generatedAt).toLocaleString()}</td>
-                  <td>
-                    {rr.coverageIncomplete ? (
-                      <span style={{ color: 'orange' }}>
-                        Incomplete (Overridden)
-                      </span>
-                    ) : (
-                      <span style={{ color: 'green' }}>Complete</span>
-                    )}
-                  </td>
-                  <td>
-                    <button
-                      onClick={() =>
-                        void run(async () => {
-                          const res = await api<ResultRunDetail>(
-                            `${base}/results/runs/${rr.id}`,
-                          );
-                          setSelectedResultRun(res);
-                        })
-                      }
-                    >
-                      View rankings
-                    </button>
-                  </td>
+          <div className="raptors-table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>ResultRun ID</th>
+                  <th>ScoreRun ID</th>
+                  <th>Generated</th>
+                  <th>Coverage</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {resultRuns.map((rr) => (
+                  <tr key={rr.id}>
+                    <td>
+                      <code>{rr.id.slice(0, 8)}...</code>
+                    </td>
+                    <td>
+                      <code>{rr.scoreRunId.slice(0, 8)}...</code>
+                    </td>
+                    <td>{new Date(rr.generatedAt).toLocaleString()}</td>
+                    <td>
+                      {rr.coverageIncomplete ? (
+                        <span style={{ color: '#444444', fontWeight: 600 }}>
+                          Incomplete (Overridden)
+                        </span>
+                      ) : (
+                        <span style={{ color: '#16a34a', fontWeight: 600 }}>
+                          Complete
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      <button
+                        onClick={() =>
+                          void run(async () => {
+                            const res = await api<ResultRunDetail>(
+                              `${base}/results/runs/${rr.id}`,
+                            );
+                            setSelectedResultRun(res);
+                          })
+                        }
+                      >
+                        View rankings
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
 
         {selectedResultRun && (
@@ -922,42 +979,46 @@ export function JudgingOrganizer({ eventId }: { eventId: string }) {
               · Policy: {selectedResultRun.rankingPolicy}{' '}
               {selectedResultRun.rankingVersion} · Coverage:{' '}
               {selectedResultRun.coverageIncomplete ? (
-                <span style={{ color: 'orange' }}>
+                <span style={{ color: '#444444', fontWeight: 600 }}>
                   Incomplete: {selectedResultRun.overrideReason}
                 </span>
               ) : (
-                <span style={{ color: 'green' }}>Complete</span>
+                <span style={{ color: '#16a34a', fontWeight: 600 }}>
+                  Complete
+                </span>
               )}
             </p>
-            <table>
-              <thead>
-                <tr>
-                  <th>Rank</th>
-                  <th>Project ID</th>
-                  <th>Normalized score</th>
-                </tr>
-              </thead>
-              <tbody>
-                {selectedResultRun.projectResults.map((pr) => (
-                  <tr key={pr.id}>
-                    <td>
-                      <strong>{pr.rank}</strong>
-                    </td>
-                    <td>
-                      <code>{pr.projectId.slice(0, 8)}...</code>
-                    </td>
-                    <td>{Number(pr.score).toFixed(6)}</td>
+            <div className="raptors-table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Project ID</th>
+                    <th>Normalized score</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {selectedResultRun.projectResults.map((pr) => (
+                    <tr key={pr.id}>
+                      <td>
+                        <strong>{pr.rank}</strong>
+                      </td>
+                      <td>
+                        <code>{pr.projectId.slice(0, 8)}...</code>
+                      </td>
+                      <td>{Number(pr.score).toFixed(6)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </section>
 
-      <section aria-label="CSV Exports">
+      <section aria-label="CSV Exports" className="raptors-card-panel">
         <h2>CSV Exports</h2>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <div className="raptors-action-row">
           {[
             { type: 'judges', label: 'Export Judges CSV' },
             { type: 'assignments', label: 'Export Assignments CSV' },
@@ -972,6 +1033,7 @@ export function JudgingOrganizer({ eventId }: { eventId: string }) {
           ].map(({ type, label }) => (
             <button
               key={type}
+              className="raptors-btn-secondary btn-secondary"
               onClick={() =>
                 void run(async () => {
                   let url = `${base}/exports/${type}`;

@@ -111,7 +111,7 @@ export function ArchiveManager({ eventId }: { eventId?: string }) {
   }
 
   return (
-    <section aria-label="Portable event archive">
+    <section aria-label="Portable event archive" className="raptors-card-panel">
       <h2>Portable event archive</h2>
       {eventId && (
         <p>

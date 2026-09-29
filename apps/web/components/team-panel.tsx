@@ -162,7 +162,7 @@ export function TeamPanel({
     team?.members.some((m) => m.userId === user.id && m.role === 'OWNER') ??
     false;
   return (
-    <section>
+    <section className="raptors-card-panel">
       <h2>Your team</h2>
       {team ? (
         <>

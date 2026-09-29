@@ -61,7 +61,7 @@ export function PairwiseOrganizer({ eventId }: { eventId: string }) {
     }
   }
   return (
-    <section aria-labelledby="pairwise-heading">
+    <section aria-labelledby="pairwise-heading" className="raptors-card-panel">
       <h2 id="pairwise-heading">Pairwise Mode</h2>
       <p>
         Judges compare two frozen submissions at a time. Create an independent
@@ -358,7 +358,7 @@ export function PairwiseOrganizer({ eventId }: { eventId: string }) {
                     {ranking.currentComparisonCount} currently submitted ·{' '}
                     {ranking.projectCount} projects
                   </p>
-                  <div className="pairwise-table">
+                  <div className="pairwise-table raptors-table-container">
                     <table>
                       <thead>
                         <tr>

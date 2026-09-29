@@ -53,7 +53,7 @@ export function VotingResults({ eventId }: { eventId: string }) {
   }, [eventId, refresh]);
 
   return (
-    <main>
+    <main className="raptors-workspace-container">
       <p className="eyebrow">Community choice</p>
       <h1>Community results</h1>
       <p>
@@ -66,14 +66,20 @@ export function VotingResults({ eventId }: { eventId: string }) {
       </button>
       {loading && <p role="status">Checking result visibility…</p>}
       {hidden && !loading && (
-        <section aria-label="Results not yet visible">
+        <section
+          aria-label="Results not yet visible"
+          className="raptors-card-panel"
+        >
           <h2>Results are not yet public</h2>
           <p>{error}</p>
         </section>
       )}
       {!hidden && error && <p role="alert">{error}</p>}
       {results && (
-        <section aria-labelledby="result-list-heading">
+        <section
+          aria-labelledby="result-list-heading"
+          className="raptors-card-panel"
+        >
           <h2 id="result-list-heading">Vote tallies</h2>
           {results.items.length ? (
             <ul className="voting-tally-list">

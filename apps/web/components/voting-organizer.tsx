@@ -131,10 +131,48 @@ export function VotingOrganizer({ eventId }: { eventId: string }) {
   const visibleAudit = audit.filter((item) => auditMatches(item, filter));
 
   return (
-    <main>
-      <p className="eyebrow">Organizer controls · Community voting</p>
-      <h1>Voting and integrity</h1>
-      <p>
+    <main className="raptors-workspace-container">
+      <div className="raptors-workspace-header">
+        <span className="raptors-workspace-eyebrow">
+          Organizer Control Center
+        </span>
+        <div className="raptors-workspace-title-row">
+          <h1 className="raptors-workspace-title">Voting and integrity</h1>
+        </div>
+        <p className="raptors-workspace-desc">
+          Configure community voting access modes, voting schedule windows, and
+          audit live vote tallies and participant comments.
+        </p>
+      </div>
+
+      <nav className="raptors-workspace-tabs" aria-label="Organizer navigation">
+        <a href={`/events/${eventId}`} className="raptors-tab-item">
+          Overview
+        </a>
+        <a href={`/events/${eventId}/manage`} className="raptors-tab-item">
+          Settings
+        </a>
+        <a href={`/events/${eventId}/judging`} className="raptors-tab-item">
+          Judging & Scoring
+        </a>
+        <a
+          href={`/events/${eventId}/judging/records`}
+          className="raptors-tab-item"
+        >
+          Signed Records
+        </a>
+        <a
+          href={`/events/${eventId}/voting/manage`}
+          className="raptors-tab-item active"
+        >
+          Voting
+        </a>
+        <a href={`/events/${eventId}/gallery`} className="raptors-tab-item">
+          Gallery
+        </a>
+      </nav>
+
+      <p style={{ display: 'none' }}>
         <a href={`/events/${eventId}/manage`}>Event settings</a> ·{' '}
         <a href={`/events/${eventId}/vote`}>Open public ballot</a> ·{' '}
         <a href={`/events/${eventId}/voting/results`}>Public results view</a>
@@ -142,7 +180,10 @@ export function VotingOrganizer({ eventId }: { eventId: string }) {
       {error && <p role="alert">{error}</p>}
       {notice && <p role="status">{notice}</p>}
 
-      <section aria-labelledby="voting-config-heading">
+      <section
+        aria-labelledby="voting-config-heading"
+        className="raptors-card-panel"
+      >
         <h2 id="voting-config-heading">Voting configuration</h2>
         {!config ? (
           <p>Loading configuration…</p>
@@ -214,7 +255,10 @@ export function VotingOrganizer({ eventId }: { eventId: string }) {
         )}
       </section>
 
-      <section aria-labelledby="community-results-heading">
+      <section
+        aria-labelledby="community-results-heading"
+        className="raptors-card-panel"
+      >
         <h2 id="community-results-heading">Live community tallies</h2>
         <p>Organizer view. Public results stay hidden until voting closes.</p>
         <button
@@ -245,7 +289,10 @@ export function VotingOrganizer({ eventId }: { eventId: string }) {
         )}
       </section>
 
-      <section aria-labelledby="voting-audit-heading">
+      <section
+        aria-labelledby="voting-audit-heading"
+        className="raptors-card-panel"
+      >
         <h2 id="voting-audit-heading">Voting audit</h2>
         <p>
           Votes, comments, moderation, configuration, and patterns flagged for

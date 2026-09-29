@@ -234,16 +234,56 @@ export function EventEditor({ eventId }: { eventId?: string }) {
     }
   };
   return (
-    <main>
-      <h1>{eventId ? 'Manage event' : 'Create event'}</h1>
+    <main className="raptors-workspace-container">
+      <div className="raptors-workspace-header">
+        <span className="raptors-workspace-eyebrow">
+          Organizer Control Center
+        </span>
+        <div className="raptors-workspace-title-row">
+          <h1 className="raptors-workspace-title">
+            {eventId ? 'Manage event' : 'Create event'}
+          </h1>
+        </div>
+        <p className="raptors-workspace-desc">
+          {eventId
+            ? 'Configure hackathon parameters, participation limits, tracks, prizes, and event timeline.'
+            : 'Initialize a new hackathon with tracks, schedules, and custom judging configurations.'}
+        </p>
+      </div>
+
       {eventId && (
-        <p>
-          <a href={`/events/${eventId}/judging`}>Judging setup and progress</a>
-          {' · '}
-          <a href={`/events/${eventId}/voting/manage`}>
+        <nav
+          className="raptors-workspace-tabs"
+          aria-label="Organizer navigation"
+        >
+          <a href={`/events/${eventId}`} className="raptors-tab-item">
+            Overview
+          </a>
+          <a
+            href={`/events/${eventId}/manage`}
+            className="raptors-tab-item active"
+          >
+            Settings
+          </a>
+          <a href={`/events/${eventId}/judging`} className="raptors-tab-item">
+            Judging setup and progress
+          </a>
+          <a
+            href={`/events/${eventId}/judging/records`}
+            className="raptors-tab-item"
+          >
+            Signed Records
+          </a>
+          <a
+            href={`/events/${eventId}/voting/manage`}
+            className="raptors-tab-item"
+          >
             Voting setup and audit
           </a>
-        </p>
+          <a href={`/events/${eventId}/gallery`} className="raptors-tab-item">
+            Gallery
+          </a>
+        </nav>
       )}
       <form onSubmit={save} key={event?.id ?? 'new'}>
         <fieldset>
@@ -429,7 +469,7 @@ export function EventEditor({ eventId }: { eventId?: string }) {
           >
             Publish event
           </button>
-          <section>
+          <section className="raptors-card-panel">
             <h2>Tracks</h2>
             <ul>
               {tracks.map((t) => (
@@ -490,7 +530,7 @@ export function EventEditor({ eventId }: { eventId?: string }) {
               <button>Add track</button>
             </form>
           </section>
-          <section>
+          <section className="raptors-card-panel">
             <h2>Prizes</h2>
             <ul>
               {prizes.map((p) => (
@@ -604,7 +644,7 @@ export function EventEditor({ eventId }: { eventId?: string }) {
               <button>Add prize</button>
             </form>
           </section>
-          <section>
+          <section className="raptors-card-panel">
             <h2>Registrations</h2>
             <ul>
               {registrations.map((r) => (
