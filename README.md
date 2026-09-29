@@ -2,6 +2,15 @@
 
 An open-source, self-hostable hackathon management, submission, judging, and results platform.
 
+## 🌐 Live Production Deployment
+
+- **Live Web Portal**: [http://13.51.169.132](http://13.51.169.132)
+- **API Documentation & Swagger UI**: [http://13.51.169.132/docs](http://13.51.169.132/docs)
+- **OpenAPI 3.0 Specification**: [http://13.51.169.132/openapi.json](http://13.51.169.132/openapi.json)
+- **Health & Readiness Probe**: [http://13.51.169.132/ready](http://13.51.169.132/ready)
+- **Self-Hosting Operations**: See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) and [docs/LIVE-DEPLOYMENT.md](docs/LIVE-DEPLOYMENT.md)
+
+
 ## What Raptors Implements
 
 ### Officially verified by the DogFood acceptance checker
